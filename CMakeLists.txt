@@ -63,6 +63,6 @@ add_executable(${PRIMER_EXE}
 set_property( TARGET ${PRIMER_EXE} PROPERTY CXX_STANDARD 14 )
 target_include_directories(${PRIMER_EXE} PUBLIC src)
 target_link_libraries(${PRIMER_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
-install(TARGETS ${PRIMER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3/bin")
+install(TARGETS ${PRIMER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
 
 
