@@ -9,6 +9,9 @@
 #include <errno.h>
 
 #include "libprimer3.h"
+#include <string>      // for getline
+#include <fstream>    // for getline
+//#include "../../../../MinGW/include/c++/8.1.0/istream"
 
 unsigned int glistmaker_code_match = 'G' << 24 | 'T' << 16 | '4' << 8 | 'C';
 
@@ -269,9 +272,9 @@ create_default_formula_parameters (const char *list_name_prefix, const char *kme
 formula_parameters ** 
 read_formula_parameters_from_file (const char *lists_file_name, unsigned int *nlist_parameters, parameters_builder *pbuilder, double *intercept, pr_append_str *parse_err)
 {
-	FILE *lists = fopen (lists_file_name, "r");
-	char *line = NULL;
-	size_t line_length = 0;
+	std::ifstream lists {lists_file_name}; 	//FILE *lists = fopen (lists_file_name, "r");
+	std::string line;                       //char *line = NULL;
+	                                        // size_t line_length = 0;
 	int read_chars;
 	int v;
 	
@@ -281,13 +284,13 @@ read_formula_parameters_from_file (const char *lists_file_name, unsigned int *nl
 		return NULL;
 	}
 
-	while ((read_chars = (int) getline(&line, &line_length, lists)) > 1) {
+	while ( std::getline(lists, line ) ) {
 		char **values = NULL;
 		unsigned int nvalues = 0;
 		
-		line[read_chars] = '\0';
-		strip_string(line);
-		values = split_string(line, ' ', &nvalues);
+		//line[read_chars] = '\0';
+		//strip_string(line);
+		values = split_string(&line[0], ' ', &nvalues);
 		if (nvalues == 1) {
 			double ic;
 			double neg = 1.0;
