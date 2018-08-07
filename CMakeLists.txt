@@ -66,3 +66,16 @@ target_link_libraries(${PRIMER_EXE} "-std=c++14 -Wall -static-libgcc -static-lib
 install(TARGETS ${PRIMER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
 
 
+add_executable(${NTDPAL_EXE}
+
+        src/ntdpal_main.c
+
+        src/dpal.c
+
+        )
+
+set_property( TARGET ${NTDPAL_EXE} PROPERTY CXX_STANDARD 14 )
+target_include_directories(${NTDPAL_EXE} PUBLIC src)
+target_link_libraries(${NTDPAL_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+install(TARGETS ${NTDPAL_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
+
