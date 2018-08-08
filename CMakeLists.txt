@@ -68,7 +68,7 @@ install(TARGETS ${PRIMER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bi
 
 add_executable(${NTDPAL_EXE}
 
-        src/ntdpal_main.c
+        src/ntdpal_main.cc
 
         src/dpal.c
 
