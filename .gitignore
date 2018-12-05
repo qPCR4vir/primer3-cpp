@@ -62,3 +62,55 @@ test/syntax10.int
 test/syntax10.rev
 
 .DS_Store
+
+# This .gitignore was modified by qPCR4vir
+
+# ignore thumbnails created by windows
+Thumbs.db
+
+# Ignore files build by Visual Studio
+*.obj
+*.exe
+*.pdb
+*.sdf
+*.suo
+*.opensdf
+*.sdf
+*.user
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+[Bb]in
+[Dd]ebug*/
+*.lib
+*.a
+*.sbr
+obj/
+*.VC.db
+.vs/
+
+# Ignore files build by CLion
+[Rr]elease*/
+_ReSharper*/
+[Tt]est[Rr]esult*
+lib/
+bin/
+*.opendb
+.idea/
+
+# Ignore cmake bulids
+cmake-build*/
+
+# Ignore files build by codelite
+.codelite/
+
+

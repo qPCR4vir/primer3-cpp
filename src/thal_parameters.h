@@ -1,7 +1,7 @@
-
-Copyright (c) 1996-2017
+/*
+Copyright (c) 2018
 Whitehead Institute for Biomedical Research, Steve Rozen
-(http://purl.com/STEVEROZEN/), Andreas Untergasser and Helen Skaletsky
+(http://purl.com/STEVEROZEN/), Andreas Untergasser and Helen Skaletsky.
 All rights reserved.
 
     This file is part of the primer3 suite and libraries.
@@ -33,11 +33,24 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 
+#ifndef THERMODYNAMIC_PARAMETERS_H
+#define THERMODYNAMIC_PARAMETERS_H 1
+#include "thal.h"
 
-USAGE: primer3_core.exe [--format_output] [--default_version=1|--default_version=2] [--io_version=4] [--p3_settings_file=<file_path>] [--echo_settings_file] [--strict_tags] [--output=<file_path>] [--error=<file_path>] [input_file]
-This is primer3 (libprimer3 release 2.4.0)
-Input can also be provided on standard input.
-For example:
-$ primer3_core < my_input_file
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* 
+ * Copy the default thermodynamic parameter strings to *a 
+ */
+int set_default_thal_parameters(thal_parameters *a);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

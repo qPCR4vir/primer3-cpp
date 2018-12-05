@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 1996,1997,1998,1999,2000,2001,2004,2006,2007,2008
 Whitehead Institute for Biomedical Research, Steve Rozen
 (http://purl.com/STEVEROZEN/), Andreas Untergasser and Helen Skaletsky
@@ -40,8 +40,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <string>
+#include <iostream>
+#include <vector>
+#include <sstream>
+
+
 int
-main(int argc, const char**argv)
+do_dpal(int argc, const char**argv)
 {
     dpal_args a;
     dpal_results r;
@@ -51,12 +57,18 @@ main(int argc, const char**argv)
     int print_align_end = 0; /* 
                               * Print align_end_1 and align_end_2 from
                               * dpal_results.
-			      */
+                              */
     int use_ambiguity_codes = 0;
     int use_h_matrix = 0;
     char mode;
+    dpal_mode dp_mode = DPM_GENERAL;
+    int dpal_debug = 0;
+    int dpal_only = 0;
     char *endptr;
-    const char *msg = 
+    std::string used_arg{" "} ;
+    for (int i=0; i<argc; i++) used_arg += argv[i];
+    const char *msg =
+      "\nUsed arguments: %s"
       "\nUsage: %s [-g <gval>] [-l <lval>] [-m <mval>]\n"
       "                 [-f2] [-p] [-s] [-e] <seq1> <seq2> <mode>"
       "\n\nwhere\n\n"
@@ -86,70 +98,78 @@ main(int argc, const char**argv)
       "       e is equivalent to G.\n\n";
 
     if (argc < 4) {
-      tmp_ret = fprintf(stderr, msg, argv[0]);
+      tmp_ret = fprintf(stderr, msg, used_arg.c_str(), argv[0]);
       exit(-1);
       return tmp_ret;
     }
     dpal_set_default_nt_args(&a);
     for (i=1; i < argc; ++i) {
-	if (!strncmp("-p", argv[i], 2)) {
-	    a.debug = 1;
-	} else if (!strncmp("-l", argv[i], 2)) {
-	  if (i+1 >= argc) {
-	    /* Missing value */
-	    fprintf(stderr, msg, argv[0]);
-	    exit(-1);
-	  }
-	  a.gapl = (int) (strtod(argv[i+1],(char **)NULL) * -100);
-	  i++;
+        if (!strncmp("-p", argv[i], 2)) {
+            dpal_debug = 1;
+        } else if (!strncmp("-l", argv[i], 2)) {
+          if (i+1 >= argc) {
+            /* Missing value */
+            fprintf(stderr, msg, argv[0]);
+            exit(-1);
+          }
+          a.gapl = (int) (strtod(argv[i+1],(char **)NULL) * -100);
+          i++;
         } else if (!strncmp("-e", argv[i], 2)) {
-	  print_align_end = 1;
-	} else if (!strncmp("-a", argv[i], 2)) {
-	  use_ambiguity_codes = 1;
-	} else if (!strncmp("-h", argv[i], 2)) {
-	  use_h_matrix = 1;
-	} else if (!strncmp("-g", argv[i], 2)) {
-	  if (i+1 >= argc) {
-	    /* Missing value */
-	    fprintf(stderr, msg, argv[0]);
-	    exit(-1);
-	  }
-	  a.gap = (int) (strtod(argv[i+1],(char **)NULL) * -100);
-	  i++;
-	} else if (!strncmp("-m", argv[i], 2)) {
-	  if (i+1 >= argc) {
-	    /* Missing value */
-	    fprintf(stderr, msg, argv[0]);
-	    exit(-1);
-	  }
-	  a.max_gap = strtol(argv[i+1], &endptr, 10);
-	  if ('\0' != *endptr) {
-	    fprintf(stderr, msg, argv[0]);
-	    exit(-1);
-	  }
-	  i++;
-	} else if (!strncmp("-s", argv[i], 2)) {
-	  a.score_only = 1;
-	} else if (!strncmp("-e", argv[i], 2)) {
-	  print_align_end = 1;
-	} else if (!strncmp("-f1", argv[i], 3)) {
-	  a.force_generic = 1;
-	} else if (!strncmp("-f2", argv[i], 3)) {
-	  a.force_long_generic = 1;
-	} else if (!strncmp("-f3", argv[i], 3)) {
-	  a.force_long_maxgap1 = 1;
-	} else if (!strncmp("-", argv[i], 1)) {
-	  /* Unknown option. */
-	  fprintf(stderr, msg, argv[0]);
-	  exit(-1);
-	} else
-	  break;		/* all args processed. go on to sequences. */
+          print_align_end = 1;
+        } else if (!strncmp("-a", argv[i], 2)) {
+          use_ambiguity_codes = 1;
+        } else if (!strncmp("-h", argv[i], 2)) {
+          use_h_matrix = 1;
+        } else if (!strncmp("-g", argv[i], 2)) {
+          if (i+1 >= argc) {
+            /* Missing value */
+            fprintf(stderr, msg, argv[0]);
+            exit(-1);
+          }
+          a.gap = (int) (strtod(argv[i+1],(char **)NULL) * -100);
+          i++;
+        } else if (!strncmp("-m", argv[i], 2)) {
+          if (i+1 >= argc) {
+            /* Missing value */
+            fprintf(stderr, msg, argv[0]);
+            exit(-1);
+          }
+          a.max_gap = strtol(argv[i+1], &endptr, 10);
+          if ('\0' != *endptr) {
+            fprintf(stderr, msg, argv[0]);
+            exit(-1);
+          }
+          i++;
+        } else if (!strncmp("-s", argv[i], 2)) {
+           dpal_only = 1;
+        } else if (!strncmp("-e", argv[i], 2)) {
+          print_align_end = 1;
+        } else if (!strncmp("-f1", argv[i], 3)) {
+          a.force_generic = 1;
+        } else if (!strncmp("-f2", argv[i], 3)) {
+          a.force_long_generic = 1;
+        } else if (!strncmp("-f3", argv[i], 3)) {
+          a.force_long_maxgap1 = 1;
+        } else if (!strncmp("-", argv[i], 1)) {
+          /* Unknown option. */
+          fprintf(stderr, msg, argv[0]);
+          exit(-1);
+        } else
+          break;                /* all args processed. go on to sequences. */
     }
     if (use_h_matrix) dpal_set_h_nt_matrix(&a);
     if (use_ambiguity_codes) dpal_set_ambiguity_code_matrix(&a);
-    if (a.score_only && a.debug) {
-	fprintf(stderr, msg, argv[0]);
-	exit(-1);
+    if (dpal_debug && dpal_only) {
+        fprintf(stderr, msg, argv[0]);
+        exit(-1);
+    } else {
+      if (dpal_debug) {
+        dp_mode = DPM_DEBUG;
+      } else if (dpal_only) {
+        dp_mode = DPM_FAST;
+      } else {
+        dp_mode = DPM_GENERAL;
+      } 
     }
     a.flag = -1;
     
@@ -162,41 +182,75 @@ main(int argc, const char**argv)
     s2 = (unsigned char *) argv[i+1];
     mode = *argv[i+2];
     if ('l' == mode)
-	a.flag = DPAL_LOCAL;
+        a.flag = DPAL_LOCAL;
     else if ('e' == mode || 'G' == mode)
-	a.flag = DPAL_GLOBAL_END;
+        a.flag = DPAL_GLOBAL_END;
     else if ('g' == mode)
-	a.flag = DPAL_GLOBAL;
+        a.flag = DPAL_GLOBAL;
     else if ('L' == mode)
-	a.flag = DPAL_LOCAL_END;
+        a.flag = DPAL_LOCAL_END;
     else {
-	fprintf(stderr, msg, argv[0]);
-	exit(-1);
+        fprintf(stderr, msg, argv[0]);
+        exit(-1);
     }
     if(print_align_end == 1) a.force_long_generic = 1;
 
-    dpal(s1, s2, &a, &r);
+    dpal(s1, s2, &a, dp_mode, &r);
     if (r.score == DPAL_ERROR_SCORE) {
       tmp_ret = fprintf(stderr, "Error: %s\n", r.msg);
       exit(-1);
       return tmp_ret;
     }
-    if (a.score_only) {
+    if (dp_mode == DPM_FAST) {
       printf("%.2f\n", 0.01 * r.score);
       if (print_align_end) {
-	if(r.align_end_1 >= 0) printf("align_end_1=%d ",r.align_end_1);
-	if(r.align_end_2 >= 0) printf("align_end_2=%d\n ",r.align_end_2);
+        if(r.align_end_1 >= 0) printf("align_end_1=%d ",r.align_end_1);
+        if(r.align_end_2 >= 0) printf("align_end_2=%d\n ",r.align_end_2);
       }
     } else {
       printf("|%s|  |%s| %c ", s1, s2, mode); 
       printf("score=%.2f len=%d ", (0.01 * r.score), r.path_length);
       if (print_align_end) {
-	if(r.align_end_1 >= 0) printf("align_end_1=%d ",r.align_end_1);
-	if(r.align_end_2 >= 0) printf("align_end_2=%d ",r.align_end_2);
+        if(r.align_end_1 >= 0) printf("align_end_1=%d ",r.align_end_1);
+        if(r.align_end_2 >= 0) printf("align_end_2=%d ",r.align_end_2);
       }
       for (i=0; i<r.path_length; i++)
-	printf("|%d,%d", r.path[i][0],r.path[i][1]);
+        printf("|%d,%d", r.path[i][0],r.path[i][1]);
       printf("|\n");
     }
     return 0;
+}
+
+int
+main(int argc, const char**argv)
+{
+    if (argc > 1 && !strncmp("-t", argv[1], 2))
+    {
+        // assume we are testing, and input is cin.
+        std::vector<const char *> new_argv  ;
+
+        new_argv.push_back(argv[0]);
+        for (int i=2; i<argc; i++)
+            new_argv.push_back(argv[i]);
+        auto base_arg_cout = new_argv.size();
+
+
+        std::string line;
+        int exit_value =0;
+        while (std::getline(std::cin,line))
+        {
+            std::istringstream in{line};
+            std::string arg;
+            std::vector<std::string> more_arg;
+            while (in >> arg)
+                more_arg.push_back(arg);
+            new_argv.resize(base_arg_cout);
+            for (auto &a : more_arg)
+                new_argv.push_back(a.c_str());
+            exit_value = do_dpal(new_argv.size(), new_argv.data());
+        }
+        return exit_value;
+    }
+    else
+        return do_dpal(argc, argv);
 }
