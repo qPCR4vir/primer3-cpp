@@ -40,6 +40,8 @@
 #include <float.h> /* ! mul ei ole float.h-d includes DBL_MAX */
 #include <math.h>
 #include <limits.h>
+#include <string>
+#include <filesystem>
 
 
 #ifndef THAL_ERROR_SCORE
@@ -79,80 +81,80 @@ extern const int MIN_LOOP;
 
 /*** END CONSTANTS ***/
 
-/* BEGIN TYPEDEFs */
+/* The files from the directory primer3_config loaded as strings */
+struct thal_parameters {
+    char *dangle_dh;
+    char *dangle_ds;
+    char *loops_dh;
+    char *loops_ds;
+    char *stack_dh;
+    char *stack_ds;
+    char *stackmm_dh;
+    char *stackmm_ds;
+    char *tetraloop_dh;
+    char *tetraloop_ds;
+    char *triloop_dh;
+    char *triloop_ds;
+    char *tstack_tm_inf_ds;
+    char *tstack_dh;
+    char *tstack2_dh;
+    char *tstack2_ds;
+} ;
 
-typedef enum thal_alignment_type {
-  thal_any = 1,
-  thal_end1 = 2,
-  thal_end2 = 3,
-  thal_hairpin = 4,
-} thal_alignment_type;
+/* BEGIN TYPEDEFs */
+enum class ThAl_type {Any, end1, end2, Hairpin };
+
 
 /* Structure for passing arguments to THermodynamic ALignment calculation */
-typedef struct {
-   thal_alignment_type type; /* one of the
-              1 THAL_ANY, (by default)
-              2 THAL_END1,
-              3 THAL_END2,
-              4 THAL_HAIRPIN */
-   int maxLoop;  /* maximum size of loop to consider; longer than 30 bp are not allowed */
-   double mv; /* concentration of monovalent cations */
-   double dv; /* concentration of divalent cations */
-   double dntp; /* concentration of dNTP-s */
-   double dna_conc; /* concentration of oligonucleotides */
-   double temp; /* temperature from which hairpin structures will be calculated */
-   int dimer; /* if non zero, dimer structure is calculated */
-} thal_args;
+
+class CProgParam_ThAl
+{
+ public:
+   enum class type {Any, end1, end2, Hairpin };
+
+   type         type;     /* 1 = Any, (by default)*/
+   int          maxLoop;  /* maximum size of loop to consider; longer than 30 bp are not allowed */
+   double       mv;       /* concentration of monovalent cations */
+   double       dv;       /* concentration of divalent cations */
+   double       dntp;     /* concentration of dNTP-s */
+   double       dna_conc; /* concentration of oligonucleotides */
+   double       temp;     /* temperature from which hairpin structures will be calculated */
+   int          dimer;    /* if non zero, dimer structure is calculated */
 
 /* Structure for receiving results from the thermodynamic alignment calculation */
-typedef struct {
-   char msg[255];
-   double temp;
-   int align_end_1;
-   int align_end_2;
-   char *sec_struct;
-} thal_results;
+     class Results
+     {
+         public:
+         std::string  msg;
+         double       temp;
+         int          align_end_1;
+         int          align_end_2;
+         char        *sec_struct;
+     } res;
 
-/* The files from the directory primer3_config loaded as strings */
-typedef struct thal_parameters {
-  char *dangle_dh;
-  char *dangle_ds;
-  char *loops_dh;
-  char *loops_ds;
-  char *stack_dh;
-  char *stack_ds;
-  char *stackmm_dh;
-  char *stackmm_ds;
-  char *tetraloop_dh;
-  char *tetraloop_ds;
-  char *triloop_dh;
-  char *triloop_ds;
-  char *tstack_tm_inf_ds;
-  char *tstack_dh;
-  char *tstack2_dh;
-  char *tstack2_ds;
-} thal_parameters;
+    enum class mode {
+        FAST    = 0, //<  = 0 - score only with optimized functions (fast)
+        GENERAL = 1, //< = 1 - use general function without debug (slow)
+        DEBUG_F = 2, //< = 2 - debug mode with fast, print alignments on STDERR
+        DEBUG   = 3, //< = 3 - debug mode print alignments on STDERR
+        STRUCT  = 4  //< = 4 - calculate secondary structures as string
+    };
 
-/* 
- * THL_FAST    = 0 - score only with optimized functions (fast)
- * THL_GENERAL = 1 - use general function without debug (slow)
- * THL_DEBUG_F = 2 - debug mode with fast, print alignments on STDERR
- * THL_DEBUG   = 3 - debug mode print alignments on STDERR
- * THL_STRUCT  = 4 - calculate secondary structures as string
- */
-typedef enum thal_mode { 
-  THL_FAST    = 0,
-  THL_GENERAL = 1,
-  THL_DEBUG_F = 2,
-  THL_DEBUG   = 3, 
-  THL_STRUCT  = 4
-} thal_mode;
+    CProgParam_ThAl (){set_thal_default_args(this);}   //??
+        void set_thal_default_args      (CProgParam_ThAl *a);
+        void set_thal_oligo_default_args(CProgParam_ThAl *a);
 
+    int  thal_set_null_parameters(thal_parameters *a);
 
-/*** END OF TYPEDEFS ***/
+    int load(const std::filesystem::path& pth ){};
+    // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
+    // void destroy_thal_structures();
+    ~CProgParam_ThAl() = default;
+    // int  thal_free_parameters(thal_parameters *a);
 
-void set_thal_default_args(thal_args *a);
-void set_thal_oligo_default_args(thal_args *a);
+    int  get_thermodynamic_values(const thal_parameters *tp);
+
+} ;
 
 /* Read the thermodynamic values (parameters) from the parameter files
    in the directory specified by 'path'.  Return 0 on success and -1
@@ -166,26 +168,16 @@ void set_thal_oligo_default_args(thal_args *a);
     exit(-1);
   }
 #endif
-int  thal_set_null_parameters(thal_parameters *a);
-
-int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
-
-int  thal_free_parameters(thal_parameters *a);
-
-int  get_thermodynamic_values(const thal_parameters *tp, thal_results *o);
-
-void destroy_thal_structures();
 
 /* Central method for finding the best alignment.  On error, o->temp
    is set to THAL_ERROR_SCORE and a message is put in o->msg.  The
    error might be caused by ENOMEM. To determine this it is necessary
    to check errno.
 */
-
-void thal(const unsigned char *oligo1, 
-          const unsigned char *oligo2, 
-          const thal_args* a,
-          const thal_mode mode, 
-          thal_results* o);
+using seq = std::basic_string<unsigned char> ;
+void thal( const seq& oligo1,
+           const seq& oligo2,
+           CProgParam_ThAl *a,
+           const thal_mode mode);
 
 #endif

@@ -117,18 +117,18 @@ const double _INFINITY = 1.0 / 0.0;
 # endif
 # endif
 
-static const double R = 1.9872; /* cal/Kmol */
+static const double R    = 1.9872; /* cal/Kmol */
 static const double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
 static const double ILAH = 0.0; /* Internal Loop EntHalpy Asymmetry correction */
 static const double AT_H = 2200.0; /* AT penalty */
 static const double AT_S = 6.9; /* AT penalty */
 static const double MinEntropyCutoff = -2500.0; /* to filter out non-existing entropies */
 static const double MinEntropy = -3224.0; /* initiation */
-static const double G2 = 0.0; /* structures w higher G are considered to be unstabile */
-const double ABSOLUTE_ZERO = 273.15;
-const double TEMP_KELVIN = 310.15;
-const int MAX_LOOP = 30; /* the maximum size of loop that can be calculated; for larger loops formula must be implemented */
-const int MIN_LOOP = 0;
+static const double G2   = 0.0; /* structures w higher G are considered to be unstabile */
+       const double ABSOLUTE_ZERO = 273.15;
+       const double TEMP_KELVIN = 310.15;
+       const int    MAX_LOOP = 30; /* the maximum size of loop that can be calculated; for larger loops formula must be implemented */
+       const int    MIN_LOOP = 0;
 //static const char BASES[5] = {'A', 'C', 'G', 'T', 'N'}; /* bases to be considered - N is every symbol that is not A, G, C,$
 //                                                  */
 //static const char BASE_PAIRS[4][4] = {"A-T", "C-G", "G-C", "T-A" }; /* allowed basepairs */
@@ -176,7 +176,10 @@ static void readLoop(char **str, double *v1, double *v2, double *v3, thal_result
 
 static int readTLoop(char **str, char *s, double *v, int triloop, thal_results *o);
 
-static void getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o);
+static void getStack(   double stackEntropies[5][5][5][5],
+                        double stackEnthalpies[5][5][5][5],
+                        const thal_parameters *tp,
+                        thal_results* o);
 
 /*static void verifyStackTable(double stack[5][5][5][5], char* type);*/ /* just for debugging; the method is turned off by default */
 
@@ -328,95 +331,6 @@ static struct tetraloop* tetraloopEntropies = NULL; /* ther penalties for given 
 static struct tetraloop* tetraloopEnthalpies = NULL; /* ther penalties for given tetraloop seq-s */
 static jmp_buf _jmp_buf;
 
-/* Initialize the thermodynamic values (parameters) */
-int  thal_set_null_parameters(thal_parameters *a) {
-  a->dangle_dh = NULL;
-  a->dangle_ds = NULL;
-  a->loops_dh = NULL;
-  a->loops_ds = NULL;
-  a->stack_dh = NULL;
-  a->stack_ds = NULL;
-  a->stackmm_dh = NULL;
-  a->stackmm_ds = NULL;
-  a->tetraloop_dh = NULL;
-  a->tetraloop_ds = NULL;
-  a->triloop_dh = NULL;
-  a->triloop_ds = NULL;
-  a->tstack_tm_inf_ds = NULL;
-  a->tstack_dh = NULL;
-  a->tstack2_dh = NULL;
-  a->tstack2_ds = NULL;
-  return 0;
-}
-
-/* Free the thermodynamic values (parameters) */
-int  thal_free_parameters(thal_parameters *a) {
-  if (NULL != a->dangle_dh) {
-    free(a->dangle_dh);
-    a->dangle_dh = NULL;
-  }
-  if (NULL != a->dangle_ds) {
-    free(a->dangle_ds);
-    a->dangle_ds = NULL;
-  }
-  if (NULL != a->loops_dh) {
-    free(a->loops_dh);
-    a->loops_dh = NULL;
-  }
-  if (NULL != a->loops_ds) {
-    free(a->loops_ds);
-    a->loops_ds = NULL;
-  }
-  if (NULL != a->stack_dh) {
-    free(a->stack_dh);
-    a->stack_dh = NULL;
-  }
-  if (NULL != a->stack_ds) {
-    free(a->stack_ds);
-    a->stack_ds = NULL;
-  }
-  if (NULL != a->stackmm_dh) {
-    free(a->stackmm_dh);
-    a->stackmm_dh = NULL;
-  }
-  if (NULL != a->stackmm_ds) {
-    free(a->stackmm_ds);
-    a->stackmm_ds = NULL;
-  }
-  if (NULL != a->tetraloop_dh) {
-    free(a->tetraloop_dh);
-    a->tetraloop_dh = NULL;
-  }
-  if (NULL != a->tetraloop_ds) {
-    free(a->tetraloop_ds);
-    a->tetraloop_ds = NULL;
-  }
-  if (NULL != a->triloop_dh) {
-    free(a->triloop_dh);
-    a->triloop_dh = NULL;
-  }
-  if (NULL != a->triloop_ds) {
-    free(a->triloop_ds);
-    a->triloop_ds = NULL;
-  }
-  if (NULL != a->tstack_tm_inf_ds) {
-    free(a->tstack_tm_inf_ds);
-    a->tstack_tm_inf_ds = NULL;
-  }
-  if (NULL != a->tstack_dh) {
-    free(a->tstack_dh);
-    a->tstack_dh = NULL;
-  }
-  if (NULL != a->tstack2_dh) {
-    free(a->tstack2_dh);
-    a->tstack2_dh = NULL;
-  }
-  if (NULL != a->tstack2_ds) {
-    free(a->tstack2_ds);
-    a->tstack2_ds = NULL;
-  }
-  return 0;
-}
 
 /* Read the thermodynamic values (parameters) from the parameter files
    in the directory specified by 'path'.  Return 0 on success and -1
