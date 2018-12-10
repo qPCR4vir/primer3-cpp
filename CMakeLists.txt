@@ -1,6 +1,9 @@
+cmake_minimum_required(VERSION 3.12)
 
-project(primer3)
-cmake_minimum_required(VERSION 3.10)
+project(primer3  VERSION      2.05.00
+        DESCRIPTION "primer 3"
+        HOMEPAGE_URL https://github.com/qPCR4vir/primer3-ori
+        LANGUAGES CXX         )
 
 
 
