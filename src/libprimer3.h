@@ -114,11 +114,11 @@ typedef struct pr_append_str {
   char *data;
 } pr_append_str;
 
-#include "oligotm.h"
+#include "oligotm.hpp"
 #include "masker.h"
 #include "thal.hpp"
 #include "thal_parameters.h"
-#include "dpal.h"
+#include "dpal.hpp"
 
 /* 
  * Arguments to the primer program as a whole.  Values for these arguments are
@@ -176,7 +176,7 @@ typedef struct sequencing_parameters {
   int accuracy;
 } sequencing_parameters;
 
-#include "p3_seq_lib.h"
+#include "p3_seq_lib.hpp"
 
 typedef struct args_for_one_oligo_or_primer {
   seq_lib       *repeat_lib;

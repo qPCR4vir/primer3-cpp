@@ -19,7 +19,7 @@ Set_Properties( dpal )
 add_library   ( thal   src/thal.cc src/thal.hpp)
 Set_Properties( thal )
 
-add_library   ( oligo_tm  src/oligotm.c)
+add_library   ( oligo_tm src/oligotm.cc)
 Set_Properties( oligo_tm )
 
 add_library   ( primer3  src/libprimer3.cc)
@@ -33,10 +33,10 @@ Set_Properties( p3_seq )
 
 include(${CMAKE_CURRENT_LIST_DIR}/select_filesystem.cmake)
 
-add_executable      ( primer3_core	src/primer3_boulder_main.c
-									src/format_output.c
+add_executable      ( primer3_core src/primer3_boulder_main.cc
+		src/format_output.cc
 									src/read_boulder.c
-									src/print_boulder.c
+		src/print_boulder.cc
 									src/mman.c       )
 Set_Properties       ( primer3_core )
 target_link_libraries( primer3_core PUBLIC thal dpal  oligo_tm  primer3 masker p3_seq)
@@ -49,7 +49,7 @@ add_executable       ( ntthal src/thal_main.c    )
 Set_Properties       ( ntthal )
 target_link_libraries( ntthal PUBLIC thal)
 
-add_executable       ( oligotm   src/oligotm_main.c   )
+add_executable       ( oligotm src/oligotm_main.cc)
 Set_Properties       ( oligotm )
 target_link_libraries( oligotm PUBLIC oligo_tm)
 
@@ -57,6 +57,6 @@ add_executable       ( long_seq_tm_test src/long_seq_tm_test_main.c  )
 Set_Properties       ( long_seq_tm_test )
 target_link_libraries( long_seq_tm_test PUBLIC oligo_tm)
 
-add_executable       ( primer3_masker  src/masker_main.c  src/mman.c )
+add_executable       ( primer3_masker src/masker_main.cc src/mman.c )
 Set_Properties       ( primer3_masker )
 target_link_libraries( primer3_masker PUBLIC  thal dpal oligo_tm primer3 masker p3_seq)
