@@ -912,6 +912,8 @@ readTLoop(char **str, char *s, double *v, int triloop, thal_results *o)
 static void 
 getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], thal_parameters &tp)
 {
+   tp.stack_ds->seekg(ios_base::beg);
+   tp.stack_dh->seekg(ios_base::beg);
    int i, j, ii, jj;
    for (i = 0; i < 5; ++i) {
       for (ii = 0; ii < 5; ++ii) {
