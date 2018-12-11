@@ -272,14 +272,15 @@ sub main() {
 			# and thermodynamic alignments
 			# Put the quickest tests first.
 			'primer_must_use_th',
-			'primer_task_th',
+			'primer_sec_struct_dpal',
+                        'primer_task_th',
 			'primer_thal_args',
 	                'primer_thal_max_seq_error',
 	                'primer_first_base_index',
                         'primer_must_match',
 
-                         'primer_masker',
-                         'primer_masker_formatted',
+                        'primer_masker',
+                        'primer_masker_formatted',
                           
 			'test_compl_error',
 			'test_left_to_right_of_right',
@@ -313,6 +314,8 @@ sub main() {
 			'primer_renewed_tasks',
 			'primer_new_tasks',
 			'primer_new_tasks_formatted',
+
+			'primer_windows_newlines',
 
 			'primer_must_overlap_point',
 			'primer_overlap_junction',
@@ -357,6 +360,7 @@ sub main() {
 			'primer_mispriming_th',
 			'th-w-other-tasks',
 			'primer_new_tasks_th',
+			'primer_sec_struct_thal',
 			'primer_thermod_align',             
 			'primer_thermod_align_formatted',
 			'primer1_th',

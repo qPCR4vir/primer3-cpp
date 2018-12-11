@@ -57,7 +57,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Some function prototypes */
 static void   print_usage();
 static void   sig_handler(int);
-static void   read_thermodynamic_parameters();
 static void   validate_kmer_lists_path();
 
 /* Other global variables. */
@@ -135,7 +134,7 @@ main(int argc, char *argv[])
       break;
     case 'p':
       if (pr_append_external(&p3_settings_path, optarg)) {
-	exit(-2); /* Out of memory. */
+        exit(-2); /* Out of memory. */
       }
       break;
     case 'i':
@@ -155,8 +154,8 @@ main(int argc, char *argv[])
       break;
 
     case 'D':  /* Undocumented flag for testing; causes 
-		  values of arguments to be echoed to
-		  stdout. */
+                  values of arguments to be echoed to
+                  stdout. */
       dump_args = 1;
       break;
     case '2':
@@ -164,13 +163,13 @@ main(int argc, char *argv[])
       break;
     case 'o':
       if (pr_append_external(&output_path, optarg)) {
-	exit(-2); /* Out of memory. */
+        exit(-2); /* Out of memory. */
       }
 
       break;
     case 'e':
       if (pr_append_external(&error_path, optarg)) {
-	exit(-2); /* Out of memory. */
+        exit(-2); /* Out of memory. */
       }
 
       break;
@@ -184,9 +183,9 @@ main(int argc, char *argv[])
   if (!pr_is_empty(&error_path)) {
     /* reassign stderr */
     if (freopen(pr_append_str_chars(&error_path), "w", stderr)
-	== NULL) {
+        == NULL) {
       fprintf(stderr, "Error creating file %s\n",
-	      pr_append_str_chars(&error_path));
+              pr_append_str_chars(&error_path));
       exit(-1);
     }
     destroy_pr_append_str_data(&error_path);
@@ -195,9 +194,9 @@ main(int argc, char *argv[])
   if (!pr_is_empty(&output_path)) {
     /* reassign stdout */
     if (freopen(pr_append_str_chars(&output_path), "w", stdout)
-	== NULL) {
+        == NULL) {
       fprintf(stderr, "Error creating file %s\n",
-	      pr_append_str_chars(&output_path));
+              pr_append_str_chars(&output_path));
       exit(-1);
     }
     destroy_pr_append_str_data(&output_path);
@@ -237,7 +236,13 @@ main(int argc, char *argv[])
     print_usage();
     exit(-1);
   }
-    
+  /* Load default thal parameters */
+  thal_results o;
+  if (get_thermodynamic_values(&global_pa->thermodynamic_parameters, &o)) {
+    fprintf(stderr, "%s\n", o.msg);
+    exit(-1);
+  }
+
   if (!global_pa) {
     exit(-2); /* Out of memory. */
   }
@@ -253,16 +258,12 @@ main(int argc, char *argv[])
      parameter values for primer picking to pa and sa. */
   if (!pr_is_empty(&p3_settings_path)) {
     read_p3_file(pr_append_str_chars(&p3_settings_path),
-		 settings,
-		 echo_settings && !format_output,
-		 strict_tags,
-		 global_pa, sarg, &fatal_parse_err,
-		 &nonfatal_parse_err, &warnings, &read_boulder_record_res);
+                 settings,
+                 echo_settings && !format_output,
+                 strict_tags,
+                 global_pa, sarg, &fatal_parse_err,
+                 &nonfatal_parse_err, &warnings, &read_boulder_record_res);
     destroy_pr_append_str_data(&p3_settings_path);
-    /* Check if any thermodynamical alignment flag was given */
-    if ((global_pa->thermodynamic_oligo_alignment == 1) || 
-	(global_pa->thermodynamic_template_alignment == 1))
-      read_thermodynamic_parameters();
     /* Check if masking template flag was given */
     if (global_pa->mask_template == 1)
        validate_kmer_lists_path();
@@ -315,40 +316,26 @@ main(int argc, char *argv[])
 
     /* See read_boulder.h for documentation on read_boulder_record().*/
     if (!read_boulder_record(stdin,
-			     &strict_tags,
-			     &io_version,
-			     !format_output,
-			     all_parameters,
-			     global_pa,
-			     sarg,
-			     &fatal_parse_err,
-			     &nonfatal_parse_err,
-			     &warnings,
-			     &read_boulder_record_res)) {
+                             &strict_tags,
+                             &io_version,
+                             !format_output,
+                             all_parameters,
+                             global_pa,
+                             sarg,
+                             &fatal_parse_err,
+                             &nonfatal_parse_err,
+                             &warnings,
+                             &read_boulder_record_res)) {
       break; /* There were no more boulder records */
     }
      if(global_pa->mask_template){
            global_pa->lowercase_masking=global_pa->mask_template;
-     }	
-    /* Check if any thermodynamical alignment flag was given and the
-       path to the parameter files changed - we need to reread them */
-    if (((global_pa->thermodynamic_oligo_alignment == 1) ||
-	 (global_pa->thermodynamic_template_alignment == 1))
-	&& (thermodynamic_path_changed == 1))
-      read_thermodynamic_parameters();
+     }        
 
      /* Check if template masking flag was given */
      if (global_pa->mask_template == 1)
         validate_kmer_lists_path();
 
-    /* Check that we found the thermodynamic parameters in case any thermodynamic flag was set to 1. */
-    if (((global_pa->thermodynamic_oligo_alignment == 1) ||
-	 (global_pa->thermodynamic_template_alignment == 1))
-	&& (thermodynamic_params_path == NULL)) {
-      /* no parameter directory found, error */
-      printf("PRIMER_ERROR=thermodynamic approach chosen, but path to thermodynamic parameters not specified\n=\n");
-      exit(-1);
-    }
     /* Check that we found the kmer lists in case masking flag was set to 1. */
     if (global_pa->mask_template == 1 && kmer_lists_path == NULL){
         printf("PRIMER_ERROR=masking template chosen, but path to kmer lists not specified\n=\n");
@@ -370,7 +357,7 @@ main(int argc, char *argv[])
     }
     input_found = 1;
     if ((global_pa->primer_task == generic)
-	&& (global_pa->pick_internal_oligo == 1)){
+        && (global_pa->pick_internal_oligo == 1)){
       PR_ASSERT(global_pa->pick_internal_oligo);
     }
 
@@ -404,7 +391,7 @@ main(int argc, char *argv[])
     if (!pr_is_empty(&warnings)) {
       if (format_output) {
         format_warning(stdout, sarg->sequence_name,
-		       warnings.data);
+                       warnings.data);
       } else {
         print_boulder_warning(warnings.data);
       }
@@ -473,11 +460,13 @@ main(int argc, char *argv[])
       /* Check for errors and print them */
       if (NULL != retval->glob_err.data) {
         fprintf(stderr, "%s: %s\n", pr_program_name, retval->glob_err.data);
+        destroy_secundary_structures(global_pa, retval);
         destroy_p3retval(retval);
         destroy_seq_args(sarg);
         exit(-4);
       }
     }
+    destroy_secundary_structures(global_pa, retval); /* This works even if retval is NULL */
     destroy_p3retval(retval); /* This works even if retval is NULL */
     retval = NULL;
     destroy_seq_args(sarg);
@@ -487,9 +476,7 @@ main(int argc, char *argv[])
          End of the primary working loop */
 
   /* To avoid being distracted when looking for leaks: */
-  if ((global_pa->thermodynamic_oligo_alignment == 1) ||
-      (global_pa->thermodynamic_template_alignment == 1))
-    destroy_thal_structures();
+  destroy_thal_structures();
     
   if(global_pa->mask_template == 1){
     delete_formula_parameters (global_pa->mp.fp, global_pa->mp.nlists);
@@ -503,7 +490,6 @@ main(int argc, char *argv[])
   destroy_pr_append_str_data(&fatal_parse_err);
   destroy_pr_append_str_data(&warnings);
   destroy_dpal_thal_arg_holder();
-  free(thermodynamic_params_path);
   free(kmer_lists_path);
   /* If it could not read input, then complain and die */
   if (0 == input_found) {
@@ -513,59 +499,6 @@ main(int argc, char *argv[])
   return 0;
 }
 
-/* Reads the thermodynamic parameters if the thermodynamic alignment
-   tag was set to 1 */
-static void
-read_thermodynamic_parameters()
-{
-  thal_results o;
-  /* if the path to the parameter files did not change,
-     we do not want to read again */
-  if (thermodynamic_path_changed == 0) return;
-  /* check that the path to the parameters folder was given */
-  if (thermodynamic_params_path == NULL) {
-
-#ifdef OS_WIN
-    /* in windows check for .\\primer3_config */
-    struct stat st;
-    if ((stat(".\\primer3_config", &st) == 0) && S_ISDIR(st.st_mode)) {
-      thermodynamic_params_path =
-	(char*) malloc(strlen(".\\primer3_config\\") * sizeof(char) + 1);
-      if (NULL == thermodynamic_params_path) exit (-2); /* Out of memory */
-      strcpy(thermodynamic_params_path, ".\\primer3_config\\");
-    } else {
-      /* no default directory found */
-      return;
-    }
-#else
-    /* in linux, check for ./primer3_config and /opt/primer3_config */
-    struct stat st;
-    if ((stat("./primer3_config", &st) == 0) && S_ISDIR(st.st_mode)) {
-      thermodynamic_params_path =
-	(char*) malloc(strlen("./primer3_config/") * sizeof(char) + 1);
-      if (NULL == thermodynamic_params_path) exit (-2); /* Out of memory */
-      strcpy(thermodynamic_params_path, "./primer3_config/");
-    } else if ((stat("/opt/primer3_config", &st) == 0)  && S_ISDIR(st.st_mode)) {
-      thermodynamic_params_path =
-	(char*) malloc(strlen("/opt/primer3_config/") * sizeof(char) + 1);
-      if (NULL == thermodynamic_params_path) exit (-2); /* Out of memory */
-      strcpy(thermodynamic_params_path, "/opt/primer3_config/");
-    } else {
-      /* no default directory found */
-      return;
-    }
-#endif
-
-  }
-  /* read in the thermodynamic parameters */
-  if (get_thermodynamic_values(thermodynamic_params_path, &o)) {
-    fprintf(stderr, "%s\n", o.msg);
-    exit(-1);
-  }
-  /* mark that the last given path was used for reading the parameters */
-  thermodynamic_path_changed = 0;
-}
-
 static void validate_kmer_lists_path(){
    if (kmer_lists_path == NULL) {
       
@@ -573,30 +506,30 @@ static void validate_kmer_lists_path(){
       /* in windows check for ..\\kmer_lists */
       struct stat st;
       if ((stat("..\\kmer_lists", &st) == 0) && S_ISDIR(st.st_mode)) {
-	 kmer_lists_path =
-	   (char*) malloc(strlen("..\\kmer_lists\\") * sizeof(char) + 1);
-	 if (NULL == kmer_lists_path) exit (-2); /* Out of memory */
-	 strcpy(kmer_lists_path, "..\\kmer_lists\\");
+         kmer_lists_path =
+           (char*) malloc(strlen("..\\kmer_lists\\") * sizeof(char) + 1);
+         if (NULL == kmer_lists_path) exit (-2); /* Out of memory */
+         strcpy(kmer_lists_path, "..\\kmer_lists\\");
       } else {
-	 /* no default directory found */
-	 return;
+         /* no default directory found */
+         return;
       }
 #else
       /* in linux, check for ../kmer_lists and /opt/kmer_lists */
       struct stat st;
       if ((stat("../kmer_lists", &st) == 0) && S_ISDIR(st.st_mode)) {
-	 kmer_lists_path =
-	   (char*) malloc(strlen("../kmer_lists/") * sizeof(char) + 1);
-	 if (NULL == kmer_lists_path) exit (-2); /* Out of memory */
-	 strcpy(kmer_lists_path, "../kmer_lists/");
+         kmer_lists_path =
+           (char*) malloc(strlen("../kmer_lists/") * sizeof(char) + 1);
+         if (NULL == kmer_lists_path) exit (-2); /* Out of memory */
+         strcpy(kmer_lists_path, "../kmer_lists/");
       } else if ((stat("/opt/kmer_lists", &st) == 0)  && S_ISDIR(st.st_mode)) {
-	 kmer_lists_path =
-	   (char*) malloc(strlen("/opt/kmer_lists/") * sizeof(char) + 1);
-	 if (NULL == kmer_lists_path) exit (-2); /* Out of memory */
-	 strcpy(kmer_lists_path, "/opt/kmer_lists/");
+         kmer_lists_path =
+           (char*) malloc(strlen("/opt/kmer_lists/") * sizeof(char) + 1);
+         if (NULL == kmer_lists_path) exit (-2); /* Out of memory */
+         strcpy(kmer_lists_path, "/opt/kmer_lists/");
       } else {
-	 /* no default directory found */
-	 return;
+         /* no default directory found */
+         return;
       }
 #endif
       
@@ -612,14 +545,14 @@ print_usage()
 
   fprintf(stderr, "\n\nUSAGE: %s %s %s %s %s %s %s %s %s %s\n", pr_program_name,
           "[--format_output]", 
-	  "[--default_version=1|--default_version=2]",
-	  "[--io_version=4]", 
-	  "[--p3_settings_file=<file_path>]",
-	  "[--echo_settings_file]",
-	  "[--strict_tags]", 
-	  "[--output=<file_path>]", 
-	  "[--error=<file_path>]",
-	  "[input_file]");
+          "[--default_version=1|--default_version=2]",
+          "[--io_version=4]", 
+          "[--p3_settings_file=<file_path>]",
+          "[--echo_settings_file]",
+          "[--strict_tags]", 
+          "[--output=<file_path>]", 
+          "[--error=<file_path>]",
+          "[input_file]");
   fprintf(stderr, "This is primer3 (%s)\n", pr_release);
   fprintf(stderr, "Input can also be provided on standard input.\n");
   fprintf(stderr, "For example:\n");

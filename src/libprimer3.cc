@@ -47,10 +47,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ctype.h> /* toupper */
 #include <unordered_map>
 
+#ifdef __GLIBCXX__
 namespace std
 {
   using namespace __gnu_cxx;
 }
+#endif
 
 #include "libprimer3.h"
 
@@ -138,7 +140,7 @@ static void _adjust_seq_args(const p3_global_settings *pa,
                              pr_append_str *warning);
 
 static void _optimize_ok_regions_list(const p3_global_settings *pa,
-				      seq_args *sa);
+                                      seq_args *sa);
 
 static int any_5_prime_ol_extension_has_problem(const primer_rec *);
 
@@ -194,6 +196,31 @@ static double align(const char *, const char*, const dpal_args *a);
 
 static double align_thermod(const char *, const char *, const thal_args *a);
 
+void destroy_primer_sec_struct(primer_rec *p_rec);
+
+void destroy_pair_sec_struct(primer_pair *ppair);
+
+void save_overwrite_sec_struct(char **base, char *inp);
+
+void recalc_secundary_structures(const p3_global_settings *pa,
+                                 const seq_args *sa,
+                                 const dpal_arg_holder *dpal_arg_to_use,
+                                 const thal_arg_holder *thal_arg_to_use,
+                                 const thal_arg_holder *thal_oligo_arg_to_use,
+                                 p3retval *retval);
+
+void recalc_primer_sec_struct(primer_rec *p_rec,
+                              const int rev,
+                              const p3_global_settings *pa,
+                              const seq_args *sa,
+                              const dpal_arg_holder *dpal_arg_to_use,
+                              const thal_arg_holder *thal_arg_to_use);
+void recalc_pair_sec_struct(primer_pair *ppair,
+                            const p3_global_settings *pa,
+                            const seq_args *sa,
+                            const dpal_arg_holder *dpal_arg_to_use,
+                            const thal_arg_holder *thal_arg_to_use);
+
 static int    characterize_pair(p3retval *p,
                                 const p3_global_settings *,
                                 const seq_args *,
@@ -208,7 +235,7 @@ static void    choose_pair_or_triple(p3retval *,
                                     const seq_args *,
                                     const dpal_arg_holder *,
                                     const thal_arg_holder *,
-				    const thal_arg_holder *,
+                                    const thal_arg_holder *,
                                     pair_array_t *);
 
 static int    sequence_quality_is_ok(const p3_global_settings *, primer_rec *,
@@ -248,14 +275,14 @@ static int    make_complete_primer_lists(p3retval *retval,
                                 const seq_args *sa,
                                 const dpal_arg_holder *dpal_arg_to_use,
                                 const thal_arg_holder *thal_arg_to_use,
-				const thal_arg_holder *thal_oligo_arg_to_use);
+                                const thal_arg_holder *thal_oligo_arg_to_use);
 
 static int    add_primers_to_check(p3retval *retval,
                                 const p3_global_settings *pa,
                                 const seq_args *sa,
                                 const dpal_arg_holder *dpal_arg_to_use,
                                 const thal_arg_holder *thal_arg_to_use,
-				const thal_arg_holder *thal_oligo_arg_to_use);
+                                const thal_arg_holder *thal_oligo_arg_to_use);
 
 static int    pick_sequencing_primer_list(p3retval *retval,
                                 const p3_global_settings *pa,
@@ -405,9 +432,9 @@ static int    is_lowercase_masked(int position,
                                    oligo_stats *);
 
 static int    primer_must_match(const p3_global_settings *pa,
-				primer_rec *h,
-				oligo_stats *stats,
-				const char *input_oligo_seq,
+                                primer_rec *h,
+                                oligo_stats *stats,
+                                const char *input_oligo_seq,
                                 char *match_three_prime,
                                 char *match_five_prime);
 static int    compare_nucleotides(const char a, const char b);
@@ -543,19 +570,20 @@ p3_destroy_global_settings(p3_global_settings *a)
 {
   if (NULL != a) {
     if (NULL != a->p_args.must_match_five_prime) {
-    	free(a->p_args.must_match_five_prime);
+      free(a->p_args.must_match_five_prime);
     }
     if (NULL != a->p_args.must_match_three_prime) {
-    	free(a->p_args.must_match_three_prime);
+      free(a->p_args.must_match_three_prime);
     }
     if (NULL != a->o_args.must_match_five_prime) {
-    	free(a->o_args.must_match_five_prime);
+      free(a->o_args.must_match_five_prime);
     }
     if (NULL != a->o_args.must_match_three_prime) {
-    	free(a->o_args.must_match_three_prime);
+      free(a->o_args.must_match_three_prime);
     }
+    thal_free_parameters(&a->thermodynamic_parameters);
     if (NULL != a->mp.list_prefix) {
-    	free(a->mp.list_prefix);
+      free(a->mp.list_prefix);
     }
     destroy_seq_lib(a->p_args.repeat_lib);
     destroy_seq_lib(a->o_args.repeat_lib);
@@ -655,6 +683,9 @@ pr_set_default_global_args_1(p3_global_settings *a)
   a->pair_compl_end_th   = 47.0;
   a->thermodynamic_oligo_alignment = 0;
   a->thermodynamic_template_alignment = 0;
+  thal_set_null_parameters(&a->thermodynamic_parameters);
+  set_default_thal_parameters(&a->thermodynamic_parameters);
+  a->show_secondary_structure_alignment = 0;
   a->liberal_base        = 0;
   a->primer_task         = generic;
   a->pick_left_primer    = 1;
@@ -1133,7 +1164,7 @@ static void free_pair_memory(int rev_num_elem)
       for (it=hmap->begin(); it!=hmap->end(); it++) {
         pp = it->second;
         if (pp != NULL)
-	  delete pp;
+          delete pp;
       }
       delete hmap;
     }
@@ -1188,7 +1219,7 @@ choose_primers(const p3_global_settings *pa,
       thermodynamic_alignment_length_error = 0;
       /* Set per sequence error */
       pr_append_new_chunk(&retval->per_sequence_err, 
-			  thermodynamic_alignment_length_error_msg);
+                          thermodynamic_alignment_length_error_msg);
       free(thermodynamic_alignment_length_error_msg);
       thermodynamic_alignment_length_error_msg = NULL;
       /* Other necessary cleanup. */
@@ -1294,6 +1325,12 @@ choose_primers(const p3_global_settings *pa,
        thal_oligo_arg_to_use, &retval->best_pairs);
   }
 
+  /* Calculate secondary structures only for the selected primers */
+  if (pa->show_secondary_structure_alignment == 1) {
+    recalc_secundary_structures(pa, sa, dpal_arg_to_use, thal_arg_to_use, 
+                                thal_oligo_arg_to_use, retval);
+  }
+
   if (pa->dump) {
     printf("End of choose_primers:\n");
     p3_print_args(pa, sa) ;
@@ -1326,7 +1363,7 @@ choose_pair_or_triple(p3retval *retval,
                       const seq_args *sa,
                       const dpal_arg_holder *dpal_arg_to_use,
                       const thal_arg_holder *thal_arg_to_use,
-		      const thal_arg_holder *thal_oligo_arg_to_use,
+                      const thal_arg_holder *thal_oligo_arg_to_use,
                       pair_array_t *best_pairs) {
   int i,j;   /* Loop index. */
   int n_int; /* Index of the internal oligo */
@@ -1360,7 +1397,7 @@ choose_pair_or_triple(p3retval *retval,
   pairs =
     (std::unordered_map<int, primer_pair*>**) 
     calloc (retval->rev.num_elem, 
-	    sizeof(std::unordered_map<int, primer_pair*>*));
+            sizeof(std::unordered_map<int, primer_pair*>*));
   if (!pairs) longjmp(_jmp_buf, 1);
   
   memset(&the_best_pair, 0, sizeof(the_best_pair));
@@ -1383,8 +1420,8 @@ choose_pair_or_triple(p3retval *retval,
 
       hmap = pairs[i];  
       /* Pairs[i] is NULL if there has never been an assignment to
-	 pairs[i] because pairs was allocated by calloc, which
-	 sets the allocated memory to 0. */
+         pairs[i] because pairs was allocated by calloc, which
+         sets the allocated memory to 0. */
 
       /* Only use a primer that *might be* legal or that the caller
          has provided and specified as "must use".  Primers are *NOT*
@@ -1393,17 +1430,17 @@ choose_pair_or_triple(p3retval *retval,
          unless necessary. */
       if (!OK_OR_MUST_USE(&retval->rev.oligo[i])) {
         /* Can free the memory used by the hmap associated to this
-	   reverse primer */
+           reverse primer */
         if (hmap) {
           for (it=hmap->begin(); it!=hmap->end(); it++) {
-	    /* it->second is the second element (i.e. the 'value', as
-	       opposed to the 'key'). */
+            /* it->second is the second element (i.e. the 'value', as
+               opposed to the 'key'). */
             pp = it->second;
             delete pp;
           }
-	  if (hmap == best_hmap) best_hmap = NULL;
+          if (hmap == best_hmap) best_hmap = NULL;
           delete hmap;
-	  hmap = NULL;
+          hmap = NULL;
           pairs[i] = NULL;
         }
         continue;
@@ -1432,14 +1469,14 @@ choose_pair_or_triple(p3retval *retval,
         /* Can free the memory used by the hmap associated to this reverse primer */
         if (hmap) {
           for (it=hmap->begin(); it!=hmap->end(); it++) {
-	    /* it->second is the second element (i.e. the 'value', as
-	       opposed to the 'key'). */
+            /* it->second is the second element (i.e. the 'value', as
+               opposed to the 'key'). */
             pp = it->second;
             delete pp;
           }
-	  if (hmap == best_hmap) best_hmap = NULL;
+          if (hmap == best_hmap) best_hmap = NULL;
           delete hmap;
-	  hmap = NULL;
+          hmap = NULL;
           pairs[i] = NULL;
         }
         continue;
@@ -1455,14 +1492,14 @@ choose_pair_or_triple(p3retval *retval,
           /* Can free the memory used by the hmap associated to this reverse primer */
           if (hmap) {
             for (it=hmap->begin(); it!=hmap->end(); it++) {
-	      /* it->second is the second element (i.e. the 'value', as
-		 opposed to the 'key'). */
+              /* it->second is the second element (i.e. the 'value', as
+                 opposed to the 'key'). */
               pp = it->second;
               delete pp;
             }
-	    if (hmap == best_hmap) best_hmap = NULL;
-	    delete hmap;
-	    hmap = NULL;
+            if (hmap == best_hmap) best_hmap = NULL;
+            delete hmap;
+            hmap = NULL;
             pairs[i] = NULL;
           }
           break;
@@ -1488,8 +1525,8 @@ choose_pair_or_triple(p3retval *retval,
         if (j > max_j_seen[i]) {
           if (trace_me)
             fprintf(stderr, 
-		    "updates ON: i=%d, j=%d, max_j_seen[%d]=%d\n", 
-		    i, j, i, max_j_seen[i]);
+                    "updates ON: i=%d, j=%d, max_j_seen[%d]=%d\n", 
+                    i, j, i, max_j_seen[i]);
           max_j_seen[i] = j;
           if (trace_me)
             fprintf(stderr, "max_j_seen[%d] --> %d\n", i, max_j_seen[i]);
@@ -1512,41 +1549,41 @@ choose_pair_or_triple(p3retval *retval,
           continue;
         }
 
-	/* Some simple checks first, before searching the hashmap */
-	int must_use = 0;
-	if ((pa->primer_task == check_primers) || 
-	    ((retval->fwd.oligo[j].must_use != 0) &&
-	     (retval->rev.oligo[i].must_use != 0))) {
-	  must_use = 1;
-	}
-	
-	/* Determine if overlap with an overlap point is required, and
-	   if so, whether one of the primers in the pairs overlaps
-	   that point. */
-	if ((sa->primer_overlap_junctions_count > 0)
-	    && !(retval->rev.oligo[i].overlaps_overlap_position
-		 || retval->fwd.oligo[j].overlaps_overlap_position)
-	    ) {
-	  if (update_stats) { 
-	    pair_expl->considered++;
-	    pair_expl->does_not_overlap_a_required_point++; 
-	  }
-	  if (!must_use) continue;
-	}
+        /* Some simple checks first, before searching the hashmap */
+        int must_use = 0;
+        if ((pa->primer_task == check_primers) || 
+            ((retval->fwd.oligo[j].must_use != 0) &&
+             (retval->rev.oligo[i].must_use != 0))) {
+          must_use = 1;
+        }
+        
+        /* Determine if overlap with an overlap point is required, and
+           if so, whether one of the primers in the pairs overlaps
+           that point. */
+        if ((sa->primer_overlap_junctions_count > 0)
+            && !(retval->rev.oligo[i].overlaps_overlap_position
+                 || retval->fwd.oligo[j].overlaps_overlap_position)
+            ) {
+          if (update_stats) { 
+            pair_expl->considered++;
+            pair_expl->does_not_overlap_a_required_point++; 
+          }
+          if (!must_use) continue;
+        }
 
-	/* Check product size now */
-	double product_size 
-	  = retval->rev.oligo[i].start - retval->fwd.oligo[j].start+1;
+        /* Check product size now */
+        double product_size 
+          = retval->rev.oligo[i].start - retval->fwd.oligo[j].start+1;
 
-	if (product_size < pa->pr_min[product_size_range_index] ||
-	    product_size > pa->pr_max[product_size_range_index]) {
-	  if (update_stats) {
-	    /* This line NEW */ if (!must_use)
-	                           pair_expl->considered++;
-	    pair_expl->product++; 
-	  }
-	  if (!must_use) continue;
-	}
+        if (product_size < pa->pr_min[product_size_range_index] ||
+            product_size > pa->pr_max[product_size_range_index]) {
+          if (update_stats) {
+            /* This line NEW */ if (!must_use)
+                                   pair_expl->considered++;
+            pair_expl->product++; 
+          }
+          if (!must_use) continue;
+        }
 
         /* Check if pair was already computed */
         pair_found = 0;
@@ -1555,31 +1592,31 @@ choose_pair_or_triple(p3retval *retval,
           if (it != hmap->end()) {
             pair_found = 1;
 
-	    /* it->second is the second element (i.e. the 'value', as
-	       opposed to the 'key'). */
+            /* it->second is the second element (i.e. the 'value', as
+               opposed to the 'key'). */
             pp = it->second; 
             if (pp) { 
-	      /* The pair was computed, it isn't illegal and it wasn't
-		 selected yet */
-	      if (update_stats) {
-		pair_expl->considered++;
-		if (trace_me)
-		  fprintf(stderr, "ok++\n");
-		pair_expl->ok++;
-	      }
-	      /* Check if this is a better pair */
-	      if (compare_primer_pair(pp, &the_best_pair) < 0) {
-		the_best_pair = *pp;
-		the_best_i = i;
-		the_best_j = j;
-		best_hmap = hmap;
-		best_pp = pp;
-	      }
-	      
-	      /* There cannot be a better pair */
-	      if (the_best_pair.pair_quality == 0) {
-		break;
-	      } 
+              /* The pair was computed, it isn't illegal and it wasn't
+                 selected yet */
+              if (update_stats) {
+                pair_expl->considered++;
+                if (trace_me)
+                  fprintf(stderr, "ok++\n");
+                pair_expl->ok++;
+              }
+              /* Check if this is a better pair */
+              if (compare_primer_pair(pp, &the_best_pair) < 0) {
+                the_best_pair = *pp;
+                the_best_i = i;
+                the_best_j = j;
+                best_hmap = hmap;
+                best_pp = pp;
+              }
+              
+              /* There cannot be a better pair */
+              if (the_best_pair.pair_quality == 0) {
+                break;
+              } 
             } /* else - pp is NULL - it's illegal or already selected */
           }
         } else {
@@ -1594,11 +1631,11 @@ choose_pair_or_triple(p3retval *retval,
           /* Characterize the pair. h is initialized by this
              call. */
           int tmp = 
-	    characterize_pair(retval, pa, sa, j, i,
-			      product_size_range_index,
-			      &h, dpal_arg_to_use,
-			      thal_arg_to_use,
-			      update_stats);
+            characterize_pair(retval, pa, sa, j, i,
+                              product_size_range_index,
+                              &h, dpal_arg_to_use,
+                              thal_arg_to_use,
+                              update_stats);
           if (tmp == PAIR_OK) {
 
             /* Choose internal oligo if needed */
@@ -1614,7 +1651,7 @@ choose_pair_or_triple(p3retval *retval,
                 }
 
                 /* Mark the pair as not good - the entry in the hash
-		   map will be a NULL */
+                   map will be a NULL */
                 (*hmap)[j] = NULL;
                 continue;
               } else {
@@ -1642,7 +1679,7 @@ choose_pair_or_triple(p3retval *retval,
             (*hmap)[j] = pp;
               
             /* The current pair (h) is the new best pair if it is
-	       better than the best pair so far. */
+               better than the best pair so far. */
             if (compare_primer_pair(&h, &the_best_pair) < 0) {
               the_best_pair = h;
               the_best_i = i;
@@ -1683,11 +1720,11 @@ choose_pair_or_triple(p3retval *retval,
         break;
 
         /* Our bookkeeping was incorrect unless the assertion below is
-	   true. If num_intervals > 1 or min_three_*_prime_distance >
-	   -1 the assertion below might not be true. */
+           true. If num_intervals > 1 or min_three_*_prime_distance >
+           -1 the assertion below might not be true. */
         PR_ASSERT(!((pa->num_intervals == 1) && 
-		    ((pa->min_left_three_prime_distance == -1) ||
-		     (pa->min_right_three_prime_distance == -1)))
+                    ((pa->min_left_three_prime_distance == -1) ||
+                     (pa->min_right_three_prime_distance == -1)))
                   || (best_pairs->num_pairs == pair_expl->ok));
       }
 
@@ -1705,18 +1742,18 @@ choose_pair_or_triple(p3retval *retval,
 
       /* Update the overlaps flags */
       for (i = 0; i < retval->rev.num_elem; i++) {
-	if (right_oligo_in_pair_overlaps_used_oligo(&retval->rev.oligo[i],
-						    &the_best_pair,
-						    pa->min_right_three_prime_distance)) {
-	  retval->rev.oligo[i].overlaps = 1;
-	}
+        if (right_oligo_in_pair_overlaps_used_oligo(&retval->rev.oligo[i],
+                                                    &the_best_pair,
+                                                    pa->min_right_three_prime_distance)) {
+          retval->rev.oligo[i].overlaps = 1;
+        }
       }
       for (j = 0; j < retval->fwd.num_elem; j++) {
-	if (left_oligo_in_pair_overlaps_used_oligo(&retval->fwd.oligo[j],
-						   &the_best_pair,
-						   pa->min_left_three_prime_distance)) {
-	  retval->fwd.oligo[j].overlaps = 1;
-	}
+        if (left_oligo_in_pair_overlaps_used_oligo(&retval->fwd.oligo[j],
+                                                   &the_best_pair,
+                                                   pa->min_left_three_prime_distance)) {
+          retval->fwd.oligo[j].overlaps = 1;
+        }
       }
 
       /* If we have enough then stop the while loop */
@@ -1779,15 +1816,15 @@ choose_internal_oligo(p3retval *retval,
        
       if (h->self_any == ALIGN_SCORE_UNDEF && pa->thermodynamic_oligo_alignment==1) {
         _pr_substr(sa->trimmed_seq, h->start, h->length, oligo_seq);
-	p3_reverse_complement(oligo_seq, revc_oligo_seq);
+        p3_reverse_complement(oligo_seq, revc_oligo_seq);
           
         oligo_compl_thermod(h, &pa->o_args, &retval->intl.expl,
                             thal_oligo_arg_to_use, oligo_seq, oligo_seq);
         if (!OK_OR_MUST_USE(h)) continue;
       }
       if(h->hairpin_th == ALIGN_SCORE_UNDEF && pa->thermodynamic_oligo_alignment==1) {
-	_pr_substr(sa->trimmed_seq, h->start, h->length, oligo_seq);
-	oligo_hairpin(h, &pa->o_args,
+        _pr_substr(sa->trimmed_seq, h->start, h->length, oligo_seq);
+        oligo_hairpin(h, &pa->o_args,
                       &retval->intl.expl, thal_oligo_arg_to_use,
                       oligo_seq);
         if (!OK_OR_MUST_USE(h)) continue;
@@ -2173,7 +2210,7 @@ make_complete_primer_lists(p3retval *retval,
                   const seq_args *sa,
                   const dpal_arg_holder *dpal_arg_to_use,
                   const thal_arg_holder *thal_arg_to_use,
-		  const thal_arg_holder *thal_oligo_arg_to_use)
+                  const thal_arg_holder *thal_oligo_arg_to_use)
 {
   int extreme;
   int length, start;
@@ -2226,14 +2263,14 @@ make_complete_primer_lists(p3retval *retval,
  */
 static int
 add_primers_to_check(p3retval *retval,
-		     const p3_global_settings *pa,
-		     const seq_args *sa,
-		     const dpal_arg_holder *dpal_arg_to_use,
-		     const thal_arg_holder *thal_arg_to_use,
-		     const thal_arg_holder *thal_oligo_arg_to_use)
+                     const p3_global_settings *pa,
+                     const seq_args *sa,
+                     const dpal_arg_holder *dpal_arg_to_use,
+                     const thal_arg_holder *thal_arg_to_use,
+                     const thal_arg_holder *thal_oligo_arg_to_use)
 {
   int extreme = 0; /* Required when calling add_one_primer
-		      but not used in the current function. */
+                      but not used in the current function. */
 
   if (sa->left_input) {
     add_one_primer(sa->left_input, &extreme, &retval->fwd,
@@ -2510,23 +2547,23 @@ pick_only_best_primer(const int start,
         h.quality = p_obj_fn(pa, &h, oligo->type);
         /* Save the primer in the array */
         if (h.quality < best.quality) {
-	  /* Free memory used by previous best primer. */
-	  free_primer_repeat_sim_score(&best);
+          /* Free memory used by previous best primer. */
+          free_primer_repeat_sim_score(&best);
           best = h;
           found_primer = 1;
         } else {
-	  /* Free memory used by this primer. */
-	  free_primer_repeat_sim_score(&h);
-	}
+          /* Free memory used by this primer. */
+          free_primer_repeat_sim_score(&h);
+        }
       }
       else {
-	/* Free memory used by this primer. */
-	free_primer_repeat_sim_score(&h);
-	if (any_5_prime_ol_extension_has_problem(&h)) {
-	  /* Break from the inner for loop, because there is no
-	     legal longer oligo with the same 3' sequence. */
-	  break;
-	}
+        /* Free memory used by this primer. */
+        free_primer_repeat_sim_score(&h);
+        if (any_5_prime_ol_extension_has_problem(&h)) {
+          /* Break from the inner for loop, because there is no
+             legal longer oligo with the same 3' sequence. */
+          break;
+        }
       }
     } /* j: Loop over possible primer length from min to max */
   } /* i: Loop over the sequence */
@@ -2658,13 +2695,13 @@ pick_primer_range(const int start, const int length, int *extreme,
         if ((h.start > *extreme) && (oligo->type == OT_RIGHT))
           *extreme = h.start;
       } else {
-	/* Free memory used by this primer. */
-	free_primer_repeat_sim_score(&h);
-	if (any_5_prime_ol_extension_has_problem(&h)) {
-	  /* Break from the inner for loop, because there is no
-	     legal longer oligo with the same 3' sequence. */
-	  break;
-	}
+        /* Free memory used by this primer. */
+        free_primer_repeat_sim_score(&h);
+        if (any_5_prime_ol_extension_has_problem(&h)) {
+          /* Break from the inner for loop, because there is no
+             legal longer oligo with the same 3' sequence. */
+          break;
+        }
       }
     } /* j: Loop over possible primer length from min to max */
   } /* i: Loop over the sequence */
@@ -2782,7 +2819,7 @@ add_one_primer(const char *primer, int *extreme, oligo_array *oligo,
   else {
     if (oligo->num_elem > 1) {
       pr_append_new_chunk(&retval->warnings, 
-			  "More than one position in template for input oligo ");
+                          "More than one position in template for input oligo ");
       pr_append(&retval->warnings, primer);
     }
     return 0; /* Success */
@@ -3003,6 +3040,13 @@ calc_and_check_oligo_features(const p3_global_settings *pa,
      struct is not initialized. */
   h->repeat_sim.score = NULL;
 
+  /* Set all struct to NULL, will be calculated later */
+  h->self_any_struct = NULL;
+  h->self_end_struct = NULL;
+  h->hairpin_struct = NULL;
+  h->template_mispriming_struct = NULL;
+  h->template_mispriming_r_struct = NULL;
+
   h->gc_content = h->num_ns = 0;
   h->overlaps_overlap_position = 0;
   h->template_mispriming = h->template_mispriming_r = ALIGN_SCORE_UNDEF;
@@ -3073,8 +3117,8 @@ calc_and_check_oligo_features(const p3_global_settings *pa,
                           po_args->must_match_three_prime,
                           po_args->must_match_five_prime)) {
       if (!must_use) {
-	op_set_must_match_err(h);
-	return;
+        op_set_must_match_err(h);
+        return;
       }
     }
   }
@@ -3385,8 +3429,8 @@ calc_and_check_oligo_features(const p3_global_settings *pa,
                                     dpal_arg_to_use, &retval->glob_err);
     if (pa->thermodynamic_template_alignment==0 && OK_OR_MUST_USE(h)) {
       oligo_template_mispriming(h, pa, sa, l, stats,
-				dpal_arg_to_use->local_end,
-				thal_args_for_template_mispriming);
+                                dpal_arg_to_use->local_end,
+                                thal_args_for_template_mispriming);
     }
   }
   
@@ -3394,7 +3438,7 @@ calc_and_check_oligo_features(const p3_global_settings *pa,
        || pa->file_flag
        || retval->output_type == primer_list
        || ((OT_RIGHT == l || OT_LEFT == l)
-	   && pa->p_args.weights.template_mispriming_th))
+           && pa->p_args.weights.template_mispriming_th))
 
       && pa->thermodynamic_template_alignment==1)
  {
@@ -3420,16 +3464,16 @@ calc_and_check_oligo_features(const p3_global_settings *pa,
        (OT_RIGHT == l || OT_LEFT == l)
        && 
        (
-	(pa->p_args.weights.template_mispriming && !pa->thermodynamic_template_alignment)
-	||
-	(pa->p_args.weights.template_mispriming_th && pa->thermodynamic_template_alignment)
-	)
+        (pa->p_args.weights.template_mispriming && !pa->thermodynamic_template_alignment)
+        ||
+        (pa->p_args.weights.template_mispriming_th && pa->thermodynamic_template_alignment)
+        )
        )
       ) {
     if (OK_OR_MUST_USE(h)) {
       oligo_template_mispriming(h, pa, sa, l, stats,
-				dpal_arg_to_use->local_end,
-				thal_args_for_template_mispriming);
+                                dpal_arg_to_use->local_end,
+                                thal_args_for_template_mispriming);
     }
   }
 
@@ -3645,44 +3689,44 @@ p_obj_fn(const p3_global_settings *pa,
       /* BEGIN: secondary structures */
       if (pa->thermodynamic_oligo_alignment==0) {
 
-	if (pa->p_args.weights.compl_any)
+        if (pa->p_args.weights.compl_any)
            sum += pa->p_args.weights.compl_any * h->self_any;
-	if (pa->p_args.weights.compl_end)
+        if (pa->p_args.weights.compl_end)
            sum += pa->p_args.weights.compl_end * h->self_end;
 
       } else if (pa->thermodynamic_oligo_alignment==1) {
 
-	if (pa->p_args.weights.compl_any_th) {
-	  if ((h->temp - pa->p_args.weights.temp_cutoff) <= h->self_any)
-	    sum += pa->p_args.weights.compl_any_th 
-	      * (h->self_any - (h->temp - pa->p_args.weights.temp_cutoff - 1.0)); /* -1.0 is added for the case where == */
-	  else
-	    sum += pa->p_args.weights.compl_any_th 
-	      * (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - h->self_any));
-	}
+        if (pa->p_args.weights.compl_any_th) {
+          if ((h->temp - pa->p_args.weights.temp_cutoff) <= h->self_any)
+            sum += pa->p_args.weights.compl_any_th 
+              * (h->self_any - (h->temp - pa->p_args.weights.temp_cutoff - 1.0)); /* -1.0 is added for the case where == */
+          else
+            sum += pa->p_args.weights.compl_any_th 
+              * (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - h->self_any));
+        }
      
-	if (pa->p_args.weights.compl_end_th) {
-	  if ((h->temp - pa->p_args.weights.temp_cutoff) <= h->self_end)
-	    sum += pa->p_args.weights.compl_end_th 
-	      * (h->self_end - (h->temp - pa->p_args.weights.temp_cutoff - 1.0));
-	  else
-	    sum += pa->p_args.weights.compl_end_th 
-	      * (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - h->self_end));
-	}
+        if (pa->p_args.weights.compl_end_th) {
+          if ((h->temp - pa->p_args.weights.temp_cutoff) <= h->self_end)
+            sum += pa->p_args.weights.compl_end_th 
+              * (h->self_end - (h->temp - pa->p_args.weights.temp_cutoff - 1.0));
+          else
+            sum += pa->p_args.weights.compl_end_th 
+              * (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - h->self_end));
+        }
      
-	if (pa->p_args.weights.hairpin_th) {
-	  if ((h->temp - pa->p_args.weights.temp_cutoff) <= h->hairpin_th)
-	    sum += pa->p_args.weights.hairpin_th 
-	      * (h->hairpin_th - (h->temp - pa->p_args.weights.temp_cutoff - 1.0));
-	  else
-	    sum += pa->p_args.weights.hairpin_th 
-	      * (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - h->hairpin_th));
-	}
+        if (pa->p_args.weights.hairpin_th) {
+          if ((h->temp - pa->p_args.weights.temp_cutoff) <= h->hairpin_th)
+            sum += pa->p_args.weights.hairpin_th 
+              * (h->hairpin_th - (h->temp - pa->p_args.weights.temp_cutoff - 1.0));
+          else
+            sum += pa->p_args.weights.hairpin_th 
+              * (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - h->hairpin_th));
+        }
 
       } else {
-	PR_ASSERT(0) 
-	  /* Programming error, 
-	     illegal value for pa->thermodynamic_oligo_alignment */
+        PR_ASSERT(0) 
+          /* Programming error, 
+             illegal value for pa->thermodynamic_oligo_alignment */
       }
        /* END: secondary structures */
      
@@ -3705,7 +3749,7 @@ p_obj_fn(const p3_global_settings *pa,
       /* FIX ME QUALITY WT Change here */
       if(pa->p_args.weights.seq_quality)
            sum += pa->p_args.weights.seq_quality *
-	     (pa->quality_range_max - h->seq_quality);  /* Look for end seq quality */
+             (pa->quality_range_max - h->seq_quality);  /* Look for end seq quality */
 
       if (pa->p_args.weights.template_mispriming && pa->thermodynamic_template_alignment==0) {
         PR_ASSERT(oligo_max_template_mispriming(h) != ALIGN_SCORE_UNDEF);
@@ -3715,14 +3759,14 @@ p_obj_fn(const p3_global_settings *pa,
                                             
       if (pa->p_args.weights.template_mispriming_th && pa->thermodynamic_template_alignment==1) {
 
-	PR_ASSERT(oligo_max_template_mispriming_thermod(h) != ALIGN_SCORE_UNDEF);
+        PR_ASSERT(oligo_max_template_mispriming_thermod(h) != ALIGN_SCORE_UNDEF);
 
-	if((h->temp - pa->p_args.weights.temp_cutoff) <= oligo_max_template_mispriming_thermod(h))
-	  sum += pa->p_args.weights.template_mispriming_th * 
-	    (oligo_max_template_mispriming_thermod(h) - (h->temp - pa->p_args.weights.temp_cutoff - 1.0));
-	if((h->temp - pa->p_args.weights.temp_cutoff) > oligo_max_template_mispriming_thermod(h))
-	  sum += pa->p_args.weights.template_mispriming_th *
-	    (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - oligo_max_template_mispriming_thermod(h)));
+        if((h->temp - pa->p_args.weights.temp_cutoff) <= oligo_max_template_mispriming_thermod(h))
+          sum += pa->p_args.weights.template_mispriming_th * 
+            (oligo_max_template_mispriming_thermod(h) - (h->temp - pa->p_args.weights.temp_cutoff - 1.0));
+        if((h->temp - pa->p_args.weights.temp_cutoff) > oligo_max_template_mispriming_thermod(h))
+          sum += pa->p_args.weights.template_mispriming_th *
+            (1/(h->temp - pa->p_args.weights.temp_cutoff + 1.0 - oligo_max_template_mispriming_thermod(h)));
       }
       return sum;
   } else if (j == OT_INTL) {
@@ -3750,34 +3794,34 @@ p_obj_fn(const p3_global_settings *pa,
       /* begin thermodynamical approach */
       if (pa->thermodynamic_oligo_alignment==1) {
 
-	if (pa->o_args.weights.compl_any_th) {
-	  if ((h->temp - pa->o_args.weights.temp_cutoff) <= h->self_any)
-	    sum += 
-	      pa->o_args.weights.compl_any_th 
-	      * (h->self_any - (h->temp - pa->o_args.weights.temp_cutoff - 1.0)); /* -1.0 is added for the case where == */
-	  else 
-	    sum += 
-	      pa->o_args.weights.compl_any_th 
-	      * (1/(h->temp - pa->o_args.weights.temp_cutoff + 1.0 - h->self_any));
-	}
+        if (pa->o_args.weights.compl_any_th) {
+          if ((h->temp - pa->o_args.weights.temp_cutoff) <= h->self_any)
+            sum += 
+              pa->o_args.weights.compl_any_th 
+              * (h->self_any - (h->temp - pa->o_args.weights.temp_cutoff - 1.0)); /* -1.0 is added for the case where == */
+          else 
+            sum += 
+              pa->o_args.weights.compl_any_th 
+              * (1/(h->temp - pa->o_args.weights.temp_cutoff + 1.0 - h->self_any));
+        }
 
-	if (pa->o_args.weights.compl_end_th) {
-	  if ((h->temp - pa->o_args.weights.temp_cutoff) <= h->self_end) 
-	    sum += 
-	      pa->o_args.weights.compl_end_th 
-	      * (h->self_end - (h->temp - pa->o_args.weights.temp_cutoff - 1.0));
-	  else
-	    sum += 
-	      pa->o_args.weights.compl_end_th 
-	      * (1/(h->temp - pa->o_args.weights.temp_cutoff + 1.0 - h->self_end));
-	}
+        if (pa->o_args.weights.compl_end_th) {
+          if ((h->temp - pa->o_args.weights.temp_cutoff) <= h->self_end) 
+            sum += 
+              pa->o_args.weights.compl_end_th 
+              * (h->self_end - (h->temp - pa->o_args.weights.temp_cutoff - 1.0));
+          else
+            sum += 
+              pa->o_args.weights.compl_end_th 
+              * (1/(h->temp - pa->o_args.weights.temp_cutoff + 1.0 - h->self_end));
+        }
      
-	if (pa->o_args.weights.hairpin_th) {
-	  if ((h->temp - pa->o_args.weights.temp_cutoff) <= h->hairpin_th) 
-	    sum += pa->o_args.weights.hairpin_th * (h->hairpin_th - (h->temp - pa->o_args.weights.temp_cutoff - 1.0));
-	  else
-	    sum += pa->o_args.weights.hairpin_th * (1/(h->temp - pa->o_args.weights.temp_cutoff + 1.0 - h->hairpin_th));
-	}
+        if (pa->o_args.weights.hairpin_th) {
+          if ((h->temp - pa->o_args.weights.temp_cutoff) <= h->hairpin_th) 
+            sum += pa->o_args.weights.hairpin_th * (h->hairpin_th - (h->temp - pa->o_args.weights.temp_cutoff - 1.0));
+          else
+            sum += pa->o_args.weights.hairpin_th * (1/(h->temp - pa->o_args.weights.temp_cutoff + 1.0 - h->hairpin_th));
+        }
       }
       /* end thermodynamical approach */
 
@@ -3811,7 +3855,14 @@ oligo_max_template_mispriming_thermod(const primer_rec *h) {
    return h->template_mispriming > h->template_mispriming_r ?
      h->template_mispriming : h->template_mispriming_r;
 }
-   
+  
+char *
+oligo_max_template_mispriming_struct(const primer_rec *h) {
+   return h->template_mispriming > h->template_mispriming_r ?
+     h->template_mispriming_struct : h->template_mispriming_r_struct;
+}
+
+
 /* Sort a given primer array by penalty */
 static void
 sort_primer_array(oligo_array *oligo)
@@ -3917,6 +3968,11 @@ characterize_pair(p3retval *retval,
 
   ppair->target = 0;
   ppair->compl_any = ppair->compl_end = 0;
+
+  ppair->compl_any_struct = NULL;
+  ppair->compl_end_struct = NULL;
+  ppair->template_mispriming_struct = NULL;
+
   if (update_stats) { 
     pair_expl->considered++;
   }
@@ -4142,9 +4198,9 @@ characterize_pair(p3retval *retval,
                                     &retval->fwd.expl,dpal_arg_to_use, &retval->glob_err);
     if (OK_OR_MUST_USE(&retval->fwd.oligo[m])) {
       oligo_template_mispriming(&retval->fwd.oligo[m], pa, sa, OT_LEFT,
-				&retval->fwd.expl,
-				dpal_arg_to_use->local_end,
-				thal_args_for_template_mispriming);
+                                &retval->fwd.expl,
+                                dpal_arg_to_use->local_end,
+                                thal_args_for_template_mispriming);
     }
     if (!OK_OR_MUST_USE(&retval->fwd.oligo[m])) {
       pair_expl->considered--;
@@ -4157,9 +4213,9 @@ characterize_pair(p3retval *retval,
                                     &retval->rev.expl, dpal_arg_to_use, &retval->glob_err);
     if (OK_OR_MUST_USE(&retval->rev.oligo[n])) {
       oligo_template_mispriming(&retval->rev.oligo[n], pa, sa, OT_RIGHT,
-				&retval->rev.expl, 
-				dpal_arg_to_use->local_end,
-				thal_args_for_template_mispriming);
+                                &retval->rev.expl, 
+                                dpal_arg_to_use->local_end,
+                                thal_args_for_template_mispriming);
     }
     if (!OK_OR_MUST_USE(&retval->rev.oligo[n])) {
       pair_expl->considered--;
@@ -4232,14 +4288,14 @@ characterize_pair(p3retval *retval,
    /* thermodynamic approach */
    if (pa->thermodynamic_oligo_alignment==1 && 
        ((compl_end = align_thermod(s2, s1_rev, thal_arg_to_use->end1)) > ppair->compl_end || 
-	(compl_end = align_thermod(s2, s1_rev, thal_arg_to_use->end2)) > ppair->compl_end)) {
+        (compl_end = align_thermod(s2, s1_rev, thal_arg_to_use->end2)) > ppair->compl_end)) {
       if (compl_end > pa->p_args.max_self_end_th) {
          if (update_stats) {
             pair_expl->compl_end++; 
          }
          if (!must_use) return PAIR_FAILED;
       }
-      ppair->compl_end = compl_end;
+      ppair->compl_end = compl_end; /* Is this correct? even if end1 is bigger we write end2?? */
    }
    
   /* ============================================================= */
@@ -4475,7 +4531,7 @@ align(const char *s1,
       return strlen(s2);
     }
   }
-  dpal((const unsigned char *) s1, (const unsigned char *) s2, a, &r);
+  dpal((const unsigned char *) s1, (const unsigned char *) s2, a, DPM_FAST, &r);
   PR_ASSERT(r.score <= SHRT_MAX);
   if (r.score == DPAL_ERROR_SCORE) {
     /* There was an error. */
@@ -4512,36 +4568,325 @@ align_thermod(const char *s1,
 {  
    int thal_trace=0;
    thal_results r;
-   thal((const unsigned char *) s1, (const unsigned char *) s2, a, &r);
+   thal((const unsigned char *) s1, (const unsigned char *) s2, a, THL_FAST, &r);
    if (thal_trace) {
      fprintf(stdout, 
-	     "thal, thal_args, type=%d maxLoop=%d mv=%f dv=%f "
-	     "dntp=%f dna_conc=%f, temp=%f, temponly=%d dimer=%d\n",
-	     a->type, a->maxLoop, a->mv, a->dv, a->dntp, a->dna_conc, 
-	     a->temp, a->temponly, a->dimer);
+             "thal, thal_args, type=%d maxLoop=%d mv=%f dv=%f "
+             "dntp=%f dna_conc=%f, temp=%f, mode=%d dimer=%d\n",
+             a->type, a->maxLoop, a->mv, a->dv, a->dntp, a->dna_conc, 
+             a->temp, DPM_FAST, a->dimer);
      fprintf(stdout, 
-	     "thal: s1=%s s2=%s temp=%f msg=%s end1=%d end2=%d\n", 
-	     s1, s2, r.temp, r.msg, r.align_end_1, r.align_end_2);
+             "thal: s1=%s s2=%s temp=%f msg=%s end1=%d end2=%d\n", 
+             s1, s2, r.temp, r.msg, r.align_end_1, r.align_end_2);
    }
    PR_ASSERT(r.temp <= DBL_MAX);
    if (r.temp == THAL_ERROR_SCORE) 
      {
         /* There was an error. */
         if (errno == ENOMEM) {
-	  longjmp(_jmp_buf, 1);
-	} else {
-	  /* This branch is taken if there is an error other than
-	     ENOMEM, in which case we treat it as a per sequence error.
-	  */
-	  /* Save the error string */
-	  if (!_set_string(&thermodynamic_alignment_length_error_msg, r.msg)) {
-	    thermodynamic_alignment_length_error = 1;
-	  }
-	  longjmp(_jmp_buf, 1);
-	}
+          longjmp(_jmp_buf, 1);
+        } else {
+          /* This branch is taken if there is an error other than
+             ENOMEM, in which case we treat it as a per sequence error.
+          */
+          /* Save the error string */
+          if (!_set_string(&thermodynamic_alignment_length_error_msg, r.msg)) {
+            thermodynamic_alignment_length_error = 1;
+          }
+          longjmp(_jmp_buf, 1);
+        }
      }
    return ((r.temp < 0.0) ? 0.0 : (double) (r.temp));
 }
+
+/* Free the secondary structure strings for selected primers */
+void
+destroy_secundary_structures(const p3_global_settings *pa,
+                             p3retval *retval) {
+  /* Pointers for the primer set just printing */
+  int num_print;
+  if (pa == NULL || retval == NULL) {
+    return;
+  }
+
+  /* Do we have a list of primers or pairs? */
+  if (retval->output_type == primer_list) {
+    /* For Primer Lists: Figure out how many primers are in
+     * the array that can be printed. If more than needed,
+     * set it to the number requested. */
+
+    /* Get how may primers should be max. printed */
+    num_print = pa->num_return;
+    if (num_print > retval->fwd.num_elem) {
+      num_print = retval->fwd.num_elem;
+    }
+    for (int i = 0 ; i < num_print ; i++) {
+      destroy_primer_sec_struct(&retval->fwd.oligo[i]);
+    }
+    num_print = pa->num_return;
+    if (num_print > retval->rev.num_elem) {
+      num_print = retval->rev.num_elem;
+    }
+    for (int i = 0 ; i < num_print ; i++) {
+      destroy_primer_sec_struct(&retval->rev.oligo[i]);
+    }
+    num_print = pa->num_return;
+    if (num_print > retval->intl.num_elem) {
+      num_print = retval->intl.num_elem;
+    }
+    for (int i = 0 ; i < num_print ; i++) {
+      destroy_primer_sec_struct(&retval->intl.oligo[i]);
+    }
+  } else {
+    /* Get how may primers should be max. printed */
+    num_print = retval->best_pairs.num_pairs;
+    for (int i = 0 ; i < num_print ; i++) {
+      destroy_primer_sec_struct(retval->best_pairs.pairs[i].left);
+      destroy_primer_sec_struct(retval->best_pairs.pairs[i].right);
+      destroy_pair_sec_struct(&retval->best_pairs.pairs[i]);
+      if (retval->intl.num_elem > 0) {
+        destroy_primer_sec_struct(retval->best_pairs.pairs[i].intl);
+      }
+    }
+  }
+}
+
+void
+destroy_primer_sec_struct(primer_rec *p_rec) {
+  if (p_rec->self_any_struct != NULL) {
+    free(p_rec->self_any_struct);
+    p_rec->self_any_struct = NULL;
+  }
+  if (p_rec->self_end_struct != NULL) {
+    free(p_rec->self_end_struct);
+    p_rec->self_end_struct = NULL;
+  }
+  if (p_rec->hairpin_struct != NULL) {
+    free(p_rec->hairpin_struct);
+    p_rec->hairpin_struct = NULL;
+  }
+}
+
+void
+destroy_pair_sec_struct(primer_pair *ppair) {
+  if (ppair->compl_any_struct != NULL) {
+    free(ppair->compl_any_struct);
+    ppair->compl_any_struct = NULL;
+  }
+  if (ppair->compl_end_struct != NULL) {
+    free(ppair->compl_end_struct);
+    ppair->compl_end_struct = NULL;
+  }
+}
+
+void
+save_overwrite_sec_struct(char **base, char *inp) {
+  if (*base != NULL) {
+    free(*base);
+  }
+  *base = inp;
+}
+
+/* Calculate the secondary structures for selected primers */
+void
+recalc_secundary_structures(const p3_global_settings *pa,
+                            const seq_args *sa,
+                            const dpal_arg_holder *dpal_arg_to_use,
+                            const thal_arg_holder *thal_arg_to_use,
+                            const thal_arg_holder *thal_oligo_arg_to_use,
+                            p3retval *retval) {
+  /* Pointers for the primer set just printing */
+  int num_print;
+
+  /* Do we have a list of primers or pairs? */
+  if (retval->output_type == primer_list) {
+    /* For Primer Lists: Figure out how many primers are in
+     * the array that can be printed. If more than needed,
+     * set it to the number requested. */
+
+    /* Get how may primers should be max. printed */
+    num_print = pa->num_return;
+    if (num_print > retval->fwd.num_elem) {
+      num_print = retval->fwd.num_elem;
+    }
+    for (int i = 0 ; i < num_print ; i++) {
+      recalc_primer_sec_struct(&retval->fwd.oligo[i],0,pa,sa,dpal_arg_to_use,thal_arg_to_use);
+    }
+    num_print = pa->num_return;
+    if (num_print > retval->rev.num_elem) {
+      num_print = retval->rev.num_elem;
+    }
+    for (int i = 0 ; i < num_print ; i++) {
+      recalc_primer_sec_struct(&retval->rev.oligo[i],1,pa,sa,dpal_arg_to_use,thal_arg_to_use);
+    }
+    num_print = pa->num_return;
+    if (num_print > retval->intl.num_elem) {
+      num_print = retval->intl.num_elem;
+    }
+    for (int i = 0 ; i < num_print ; i++) {
+      recalc_primer_sec_struct(&retval->intl.oligo[i],0,pa,sa,dpal_arg_to_use,thal_oligo_arg_to_use);
+    }
+  } else {
+    /* Get how may primers should be max. printed */
+    num_print = retval->best_pairs.num_pairs;
+    for (int i = 0 ; i < num_print ; i++) {
+      recalc_primer_sec_struct(retval->best_pairs.pairs[i].left,0,pa,sa,dpal_arg_to_use,thal_arg_to_use);
+      recalc_primer_sec_struct(retval->best_pairs.pairs[i].right,1,pa,sa,dpal_arg_to_use,thal_arg_to_use);
+      recalc_pair_sec_struct(&retval->best_pairs.pairs[i],pa,sa,dpal_arg_to_use,thal_arg_to_use);
+      if (retval->intl.num_elem > 0) {
+        recalc_primer_sec_struct(retval->best_pairs.pairs[i].intl,0,pa,sa,dpal_arg_to_use,thal_oligo_arg_to_use);
+      }
+    }
+  }
+}
+
+/* This functions overwrite the any/end values to report discrepancies for debugging.*/
+void
+recalc_primer_sec_struct(primer_rec *p_rec,
+                         const int rev,
+                         const p3_global_settings *pa,
+                         const seq_args *sa,
+                         const dpal_arg_holder *dpal_arg_to_use,
+                         const thal_arg_holder *thal_arg_to_use) {
+  char s1[MAX_PRIMER_LENGTH+1], s1_rev[MAX_PRIMER_LENGTH+1];
+  /* s1 is the forward oligo. */
+  if (rev == 0) {
+    _pr_substr(sa->trimmed_seq, p_rec->start, p_rec->length, s1);
+               p3_reverse_complement(s1, s1_rev);
+  } else {
+    _pr_substr(sa->trimmed_seq, p_rec->start - p_rec->length + 1,
+               p_rec->length, s1_rev);
+    p3_reverse_complement(s1_rev, s1);
+  }
+  
+  if (pa->thermodynamic_oligo_alignment==0) {
+    dpal_results any, end;
+    if (p_rec->self_any > 0.0) {
+      dpal((const unsigned char *) s1, (const unsigned char *) s1_rev, 
+           dpal_arg_to_use->local, DPM_STRUCT, &any);
+      p_rec->self_any = any.score / PR_ALIGN_SCORE_PRECISION;
+      save_overwrite_sec_struct(&p_rec->self_any_struct, any.sec_struct);
+    }
+    if (p_rec->self_end > 0.0) {
+      dpal((const unsigned char *) s1, (const unsigned char *) s1_rev, 
+           dpal_arg_to_use->end, DPM_STRUCT, &end);
+      p_rec->self_end = end.score / PR_ALIGN_SCORE_PRECISION;
+      save_overwrite_sec_struct(&p_rec->self_end_struct, end.sec_struct);
+    }
+  }
+  /* Thermodynamic approach, fwd-primer */
+  if (pa->thermodynamic_oligo_alignment==1) {
+    thal_results any, end, hair;
+    if (p_rec->self_any > 0.0 ) {
+      thal((const unsigned char *) s1, (const unsigned char *) s1, 
+           thal_arg_to_use->any, THL_STRUCT, &any);
+      p_rec->self_any = any.temp;
+      save_overwrite_sec_struct(&p_rec->self_any_struct, any.sec_struct);
+    }
+    if (p_rec->self_end > 0.0) {
+      thal((const unsigned char *) s1, (const unsigned char *) s1, 
+           thal_arg_to_use->end1, THL_STRUCT, &end);
+      p_rec->self_end = end.temp;
+      save_overwrite_sec_struct(&p_rec->self_end_struct, end.sec_struct);
+    }
+    if (p_rec->hairpin_th > 0.0 ) {
+      thal((const unsigned char *) s1, (const unsigned char *) s1, 
+            thal_arg_to_use->hairpin_th, THL_STRUCT, &hair);
+      p_rec->hairpin_th = hair.temp;
+      save_overwrite_sec_struct(&p_rec->hairpin_struct, hair.sec_struct);
+    }
+  }
+}
+
+void
+recalc_pair_sec_struct(primer_pair *ppair,
+                       const p3_global_settings *pa,
+                       const seq_args *sa,
+                       const dpal_arg_holder *dpal_arg_to_use,
+                       const thal_arg_holder *thal_arg_to_use) {
+  char s1[MAX_PRIMER_LENGTH+1], s1_rev[MAX_PRIMER_LENGTH+1];
+  char s2[MAX_PRIMER_LENGTH+1], s2_rev[MAX_PRIMER_LENGTH+1];
+  /* s1 is the forward oligo. */
+  _pr_substr(sa->trimmed_seq,
+             ppair->left->start,
+             ppair->left->length,
+             s1);
+  /* s2 is the reverse oligo. */
+  _pr_substr(sa->trimmed_seq,
+             ppair->right->start - ppair->right->length + 1,
+             ppair->right->length,
+             s2);
+  p3_reverse_complement(s1, s1_rev);
+  p3_reverse_complement(s2, s2_rev);
+  if(pa->thermodynamic_oligo_alignment==0) {
+    dpal_results any, end, end2;
+    if (ppair->compl_any > 0.0) {
+      dpal((const unsigned char *) s1, (const unsigned char *) s2, dpal_arg_to_use->local, DPM_STRUCT, &any);
+      ppair->compl_any = any.score / PR_ALIGN_SCORE_PRECISION;
+      save_overwrite_sec_struct(&ppair->compl_any_struct, any.sec_struct);
+    }
+    if (ppair->compl_end > 0.0) {
+      dpal((const unsigned char *) s1, (const unsigned char *) s2, dpal_arg_to_use->end, DPM_STRUCT, &end);
+      ppair->compl_end = end.score / PR_ALIGN_SCORE_PRECISION;
+      save_overwrite_sec_struct(&ppair->compl_end_struct, end.sec_struct);
+      dpal((const unsigned char *) s2_rev, (const unsigned char *) s1_rev, dpal_arg_to_use->end, DPM_STRUCT, &end2);
+      if (end2.score / PR_ALIGN_SCORE_PRECISION > ppair->compl_end){
+        ppair->compl_end = end2.score / PR_ALIGN_SCORE_PRECISION;
+        save_overwrite_sec_struct(&ppair->compl_end_struct, end2.sec_struct);
+      } else {
+        if (end2.sec_struct != NULL) {
+          free(end2.sec_struct);
+          end2.sec_struct = NULL;
+        }
+      }
+    }
+  } else {
+    /* thermodynamical approach */
+    thal_results any, end1, end2, end3, end4;
+    if (ppair->compl_any > 0.0) {
+      thal((const unsigned char *) s1, (const unsigned char *) s2_rev, thal_arg_to_use->any, THL_STRUCT, &any);
+      ppair->compl_any = any.temp;
+      save_overwrite_sec_struct(&ppair->compl_any_struct, any.sec_struct);
+    }
+    if (ppair->compl_end > 0.0) {
+      thal((const unsigned char *) s1, (const unsigned char *) s2_rev, thal_arg_to_use->end1, THL_STRUCT, &end1);
+      ppair->compl_end = end1.temp;
+      save_overwrite_sec_struct(&ppair->compl_end_struct, end1.sec_struct);
+      thal((const unsigned char *) s1, (const unsigned char *) s2_rev, thal_arg_to_use->end2, THL_STRUCT, &end2); /* Triinu Please check */
+      if (ppair->compl_end < end2.temp) {
+        ppair->compl_end = end2.temp;
+        save_overwrite_sec_struct(&ppair->compl_end_struct, end2.sec_struct);
+      } else {
+        if (end2.sec_struct != NULL) {
+          free(end2.sec_struct);
+          end2.sec_struct = NULL;
+        }
+      }
+      thal((const unsigned char *) s2, (const unsigned char *) s1_rev, thal_arg_to_use->end1, THL_STRUCT, &end3);
+      if (ppair->compl_end < end3.temp) {
+        ppair->compl_end = end3.temp;
+        save_overwrite_sec_struct(&ppair->compl_end_struct, end3.sec_struct);
+      } else { 
+        if (end3.sec_struct != NULL) {
+          free(end3.sec_struct);
+          end3.sec_struct = NULL;
+        }
+        /* most likely wrong - should not be within this else */
+        thal((const unsigned char *) s2, (const unsigned char *) s1_rev, thal_arg_to_use->end2, THL_STRUCT, &end4); /* Triinu Please check */
+        if (ppair->compl_end < end4.temp) {
+          ppair->compl_end = end4.temp;
+          save_overwrite_sec_struct(&ppair->compl_end_struct, end4.sec_struct);
+        } else {
+          if (end4.sec_struct != NULL) {
+            free(end4.sec_struct);
+            end4.sec_struct = NULL;
+          }
+        }
+      }
+    }
+  }
+}
+
 
 /* Return the sequence of oligo in
    a ****static***** buffer.  The
@@ -4745,7 +5090,7 @@ primer_mispriming_to_template(primer_rec *h,
 
   if (pa->p_args.max_template_mispriming >= 0) {
     if (oligo_max_template_mispriming(h)
-	> pa->p_args.max_template_mispriming) {
+        > pa->p_args.max_template_mispriming) {
       op_set_high_similarity_to_multiple_template_sites(h);
       if (OT_LEFT == l || OT_RIGHT == l ) {
         ostats->template_mispriming++;
@@ -4834,7 +5179,7 @@ primer_mispriming_to_template_thermod(primer_rec *h,
    
    if (debug)
      fprintf(stdout, "3' of oligo Score %f aligning %s against %s\n\n",
-	     h->template_mispriming, oseq, &target[0] + last_untrimmed + 1);
+             h->template_mispriming, oseq, &target[0] + last_untrimmed + 1);
    
    /* 3. Take the max of 1. and 2. */
    if (tmp_score > h->template_mispriming)
@@ -4846,17 +5191,17 @@ primer_mispriming_to_template_thermod(primer_rec *h,
    
    if (debug)
      fprintf(stdout,
-	     "In primer_mispriming_to_template_thermod\n"
-	     " other strand Score %f aligning %s against %s\n\n",
-	     h->template_mispriming_r, oseq, target_r);
+             "In primer_mispriming_to_template_thermod\n"
+             " other strand Score %f aligning %s against %s\n\n",
+             h->template_mispriming_r, oseq, target_r);
 
    if (pa->p_args.max_template_mispriming_th >= 0) {
      if (oligo_max_template_mispriming_thermod(h)
-	 > pa->p_args.max_template_mispriming_th) {
+         > pa->p_args.max_template_mispriming_th) {
        op_set_high_similarity_to_multiple_template_sites(h);
        if (OT_LEFT == l || OT_RIGHT == l ) {
-	 ostats->template_mispriming++;
-	 ostats->ok--;
+         ostats->template_mispriming++;
+         ostats->ok--;
        }
        else PR_ASSERT(0); /* Should not get here. */
      } else {
@@ -5227,8 +5572,8 @@ is_lowercase_masked(int position,
  */
 static int
 primer_must_match(const p3_global_settings *pa, primer_rec *h, oligo_stats *global_oligo_stats,
-		  /* This is 5'->3' on the template sequence: */
-		  const char *input_oligo_seq, char *match_three_prime, char *match_five_prime)
+                  /* This is 5'->3' on the template sequence: */
+                  const char *input_oligo_seq, char *match_three_prime, char *match_five_prime)
 {
   const char *seq;
   char *test;
@@ -5238,8 +5583,8 @@ primer_must_match(const p3_global_settings *pa, primer_rec *h, oligo_stats *glob
     test = match_five_prime;
     for (int i = 0; i < 5; i++) {
       if (!compare_nucleotides(*seq, *test)) {
-	global_oligo_stats->must_match_fail++;
-	return 1;
+        global_oligo_stats->must_match_fail++;
+        return 1;
       }
       seq++;
       test++;
@@ -5251,12 +5596,12 @@ primer_must_match(const p3_global_settings *pa, primer_rec *h, oligo_stats *glob
     seq = seq + length;
     for (int i = 0; i < 5; i++) {
       if (!compare_nucleotides(*seq, *test)) {
-	global_oligo_stats->must_match_fail++;
-	return 1;
+        global_oligo_stats->must_match_fail++;
+        return 1;
       }
       seq++;
       test++;
-		}
+                }
   }
   return 0;
 }
@@ -5282,25 +5627,25 @@ static int compare_nucleotides(const char a, const char b)
   }
   if (x == 'A') {
     if ((y == 'R') or (y == 'W') or (y == 'M') or
-	(y == 'H') or (y == 'D') or (y == 'V')){
+        (y == 'H') or (y == 'D') or (y == 'V')){
       return 1;
     }
   }
   if (x == 'G') {
     if ((y == 'R') or (y == 'S') or (y == 'K') or
-	(y == 'B') or (y == 'D') or (y == 'V')){
+        (y == 'B') or (y == 'D') or (y == 'V')){
       return 1;
     }
   }
   if (x == 'C') {
     if ((y == 'Y') or (y == 'S') or (y == 'M') or
-	(y == 'B') or (y == 'H') or (y == 'V')){
+        (y == 'B') or (y == 'H') or (y == 'V')){
       return 1;
     }
   }
   if (x == 'T') {
     if ((y == 'Y') or (y == 'W') or (y == 'K') or
-	(y == 'B') or (y == 'H') or (y == 'D')){
+        (y == 'B') or (y == 'H') or (y == 'D')){
       return 1;
     }
   }
@@ -5324,13 +5669,13 @@ static int test_must_match_parameters(char *test)
     }
     /* Check it is NACTGRYWSMKBHDV */
     if ((x == 'N') ||
-	(x == 'A') || (x == 'C') ||
-	(x == 'T') || (x == 'G') ||
-	(x == 'R') || (x == 'Y') ||
-	(x == 'W') || (x == 'S') ||
-	(x == 'M') || (x == 'K') ||
-	(x == 'B') || (x == 'H') ||
-	(x == 'D') || (x == 'V')){
+        (x == 'A') || (x == 'C') ||
+        (x == 'T') || (x == 'G') ||
+        (x == 'R') || (x == 'Y') ||
+        (x == 'W') || (x == 'S') ||
+        (x == 'M') || (x == 'K') ||
+        (x == 'B') || (x == 'H') ||
+        (x == 'D') || (x == 'V')){
       test++;
       i++;
     } else {
@@ -5548,7 +5893,7 @@ p3_pair_explain_string(const pair_stats *pair_expl)
   IF_SP_AND_CHECK(", not in any ok region %d", 
                   pair_expl->not_in_any_ok_region);
   IF_SP_AND_CHECK(", left primer to right of right primer %d",
-		  pair_expl->reversed);
+                  pair_expl->reversed);
 
   SP_AND_CHECK(", ok %d", pair_expl->ok)
 
@@ -5615,7 +5960,7 @@ p3_get_pair_array_explain_string(const pair_array_t *pair_array)
 const char *
 libprimer3_release(void) 
 {
-  return "libprimer3 release 2.4.0";
+  return "libprimer3 release 2.5.0";
 }
 
 const char *
@@ -5807,7 +6152,7 @@ _adjust_seq_args(const p3_global_settings *pa,
   }
   if (pa->primer_task == pick_sequencing_primers && sa->incl_l != -1) {
     pr_append_new_chunk(nonfatal_err,
-			"Task pick_sequencing_primers cannot be combined with included region");
+                        "Task pick_sequencing_primers cannot be combined with included region");
     return;
   }
 
@@ -5843,7 +6188,7 @@ _adjust_seq_args(const p3_global_settings *pa,
     /* Changed here from incl_s and incl_l to sa->tar2->pairs[0][0/1] */
     if (sa->tar2.count != 1) {
       pr_append_new_chunk(nonfatal_err,
-			  "Task pick_discriminative_primers requires exactly one SEQUENCE_TARGET");
+                          "Task pick_discriminative_primers requires exactly one SEQUENCE_TARGET");
     }
     sa->force_left_end = sa->tar2.pairs[0][0] - 1;
     sa->force_right_end = sa->tar2.pairs[0][0] + sa->tar2.pairs[0][1];
@@ -5964,7 +6309,7 @@ _adjust_seq_args(const p3_global_settings *pa,
  */
 static void
 _optimize_ok_regions_list(const p3_global_settings *pa,
-			  seq_args *sa)
+                          seq_args *sa)
 {
   /* We do this only if we enabled the optimization and
    * the primers were NOT specified. */
@@ -5995,12 +6340,12 @@ _optimize_ok_regions_list(const p3_global_settings *pa,
     if (sa->ok_regions.left_pairs[i][0] != -1) {
       ls = sa->ok_regions.left_pairs[i][0];
       le = sa->ok_regions.left_pairs[i][0]
-	+ sa->ok_regions.left_pairs[i][1] - 1;
+        + sa->ok_regions.left_pairs[i][1] - 1;
     }
     if (sa->ok_regions.right_pairs[i][0] != -1) {
       rs = sa->ok_regions.right_pairs[i][0];
       re = sa->ok_regions.right_pairs[i][0]
-	+ sa->ok_regions.right_pairs[i][1] - 1;
+        + sa->ok_regions.right_pairs[i][1] - 1;
     }
     /* Compute new right region based on left range and min/max values
        of product size and oligo length */
@@ -6026,14 +6371,14 @@ _optimize_ok_regions_list(const p3_global_settings *pa,
     }
     /* Temporary testing fprintf: */
     /* fprintf(stderr, "Adjusted range [%d,%d,%d,%d] to [%d,%d,%d,%d],
-	    pmin is %d, pmax is %d, omin is %d, omax is %d\n",
-	    sa->ok_regions.left_pairs[i][0],
-	    sa->ok_regions.left_pairs[i][0] +
-	    sa->ok_regions.left_pairs[i][1] - 1,
-	    sa->ok_regions.right_pairs[i][0],
-	    sa->ok_regions.right_pairs[i][0] +
-	    sa->ok_regions.right_pairs[i][1] - 1, ls, le, rs, re,
-	    pmin, pmax, omin, omax);
+            pmin is %d, pmax is %d, omin is %d, omax is %d\n",
+            sa->ok_regions.left_pairs[i][0],
+            sa->ok_regions.left_pairs[i][0] +
+            sa->ok_regions.left_pairs[i][1] - 1,
+            sa->ok_regions.right_pairs[i][0],
+            sa->ok_regions.right_pairs[i][0] +
+            sa->ok_regions.right_pairs[i][1] - 1, ls, le, rs, re,
+            pmin, pmax, omin, omax);
     */
     sa->ok_regions.left_pairs[i][0] = ls;
     sa->ok_regions.left_pairs[i][1] = le - ls + 1;
@@ -6736,9 +7081,9 @@ _pr_data_control(const p3_global_settings *pa,
   
   if (pa->p_args.divalent_conc > 0.0 && pa->p_args.dntp_conc <= 0.0) {
     pr_append_new_chunk(warning,
-			"PRIMER_SALT_DIVALENT > 0.0 "
-			"but PRIMER_DNTP_CONC <= 0.0; "
-			"use reasonable value for PRIMER_DNTP_CONC");
+                        "PRIMER_SALT_DIVALENT > 0.0 "
+                        "but PRIMER_DNTP_CONC <= 0.0; "
+                        "use reasonable value for PRIMER_DNTP_CONC");
   }
 
   if ((pa->p_args.must_match_five_prime != NULL) &&
@@ -6990,9 +7335,9 @@ p3_print_oligo_lists(const p3retval *retval,
     /* Print the content to the file */
     ret = 
       p3_print_one_oligo_list(sa, retval->fwd.num_elem,
-			      retval->fwd.oligo, OT_LEFT,
-			      first_base_index, NULL != pa->p_args.repeat_lib, 
-			      fh,pa->thermodynamic_oligo_alignment);
+                              retval->fwd.oligo, OT_LEFT,
+                              first_base_index, NULL != pa->p_args.repeat_lib, 
+                              fh,pa->thermodynamic_oligo_alignment);
     fclose(fh);
     if (ret) return 1;
   }
@@ -7010,9 +7355,9 @@ p3_print_oligo_lists(const p3retval *retval,
     }
     /* Print the content to the file */
     ret = p3_print_one_oligo_list(sa, retval->rev.num_elem,
-				  retval->rev.oligo, OT_RIGHT,
-				  first_base_index, NULL != pa->p_args.repeat_lib, 
-				  fh, pa->thermodynamic_oligo_alignment);
+                                  retval->rev.oligo, OT_RIGHT,
+                                  first_base_index, NULL != pa->p_args.repeat_lib, 
+                                  fh, pa->thermodynamic_oligo_alignment);
 
     fclose(fh);
     if (ret) return 1;
@@ -7036,7 +7381,7 @@ p3_print_oligo_lists(const p3retval *retval,
                                   retval->intl.oligo, OT_INTL,
                                   first_base_index, 
                                   NULL != pa->o_args.repeat_lib, 
-				  fh, pa->thermodynamic_oligo_alignment);
+                                  fh, pa->thermodynamic_oligo_alignment);
     fclose(fh);
     if (ret) return 1;
   }
@@ -7139,12 +7484,12 @@ print_oligo(FILE *fh,
     : pr_oligo_rev_c_sequence(sa, h);
 
   ret = fprintf(fh,
-		"%4d %-30s %5d %2d %2d %5.2f %5.3f %5.2f %5.2f", 
-		index, p, h->start+sa->incl_s + first_base_index,
-		h->length,
-		h->num_ns, h->gc_content, h->temp,
-		h->self_any,
-		h->self_end);
+                "%4d %-30s %5d %2d %2d %5.2f %5.3f %5.2f %5.2f", 
+                index, p, h->start+sa->incl_s + first_base_index,
+                h->length,
+                h->num_ns, h->gc_content, h->temp,
+                h->self_any,
+                h->self_end);
   if (ret < 0) return 1;
 
   if (1==thermodynamical_approach) {
@@ -7156,7 +7501,7 @@ print_oligo(FILE *fh,
   if (print_lib_sim) {
     PR_ASSERT(h->repeat_sim.score != NULL);
     ret = fprintf(fh, " %5.2f",
-		  h->repeat_sim.score[h->repeat_sim.max]);
+                  h->repeat_sim.score[h->repeat_sim.max]);
     if (ret < 0) return 1;
   }
   ret = fprintf(fh, " %6.3f\n", h->quality);
@@ -7202,11 +7547,24 @@ p3_read_line(FILE *file)
   p = s;
   remaining_size = ssz;
   while (1) {
-    if (fgets(p, remaining_size, file) == NULL) /* End of file. */
-      return p == s ? NULL : s;
-
+    if (fgets(p, remaining_size, file) == NULL) { /* End of file. */
+      if (p == s) {
+        ssz = 0;
+        if (s != NULL) {
+          free(s);
+        }
+        s = NULL;
+        return NULL;
+      } else {
+        return s;
+      }
+    }
     if ((n = strchr(p, '\n')) != NULL) {
       *n = '\0';
+      n--;
+      if ((n >= p) && (*n == '\r')) {
+        *n = '\0';
+      }
       return s;
     }
 
@@ -7649,7 +8007,7 @@ p3_set_gs_primer_task(p3_global_settings * pa , char * task_tmp)
     pa->primer_task = generic;
   } else if (!strcmp_nocase(task_tmp, "pick_detection_primers")) {
     pa->primer_task = generic; /* Deliberate duplication for
-				    backward compatibility. */
+                                    backward compatibility. */
   } else if (!strcmp_nocase(task_tmp, "pick_cloning_primers")) {
     pa->primer_task = pick_cloning_primers;
   } else if (!strcmp_nocase(task_tmp, "pick_discriminative_primers")) {

@@ -117,6 +117,7 @@ typedef struct pr_append_str {
 #include "oligotm.h"
 #include "masker.h"
 #include "thal.h"
+#include "thal_parameters.h"
 #include "dpal.h"
 
 /* 
@@ -276,7 +277,7 @@ typedef struct p3_global_settings {
   /* Arguments that control behavior of choose_primers() */
 
   task   primer_task; /* 2 if left primer only, 3 if right primer
-		       * only, 4 if internal oligo only.  */
+                       * only, 4 if internal oligo only.  */
 
   int    pick_left_primer;
   int    pick_right_primer;
@@ -412,7 +413,7 @@ typedef struct p3_global_settings {
   */
 
   sequencing_parameters sequencing;  /* Used to calculate the position
-					of sequencing primers */
+                                        of sequencing primers */
 
   double outside_penalty; /* Multiply this value times the number of NTs
                            * from the 3' end to the the (unique) target to
@@ -475,6 +476,20 @@ typedef struct p3_global_settings {
      1 = Use alignment based on thermodynamics.
   */
 
+  thal_parameters thermodynamic_parameters;
+  /*
+     The parameters for thermodynamic calculation. Default parameters
+     are loaded by the thermodynamic_parameters.h function and
+     can be overwitten by read_boulder.h functions.
+  */
+
+  int show_secondary_structure_alignment;
+  /* 
+     String representations of the secondary structures are calculated.
+     0 = Do not calculate and show secondary structure strings.
+     1 = Calculate and show secondary structure strings.
+  */
+
   double max_diff_tm; 
   /* Maximum allowed difference between temperature of primer and
      temperature of product.  Cannot be calculated until product is
@@ -493,9 +508,9 @@ typedef struct p3_global_settings {
   */
   
   int    min_5_prime_overlap_of_junction;   /* The number of basepairs
-					       the primer has to
-					       overlap an overlap
-					       junction. */
+                                               the primer has to
+                                               overlap an overlap
+                                               junction. */
   int    min_3_prime_overlap_of_junction;
 
   int    mask_template;
@@ -517,7 +532,7 @@ typedef enum oligo_type { OT_LEFT = 0, OT_RIGHT = 1, OT_INTL = 2 }
    library (which is read in from a fasta file). */
 typedef struct rep_sim {
   char *name;       /* Name of the sequence format with maximum
-		       similarity to the oligo.
+                     * similarity to the oligo.
                      */
 
   short min;        /* 
@@ -527,14 +542,14 @@ typedef struct rep_sim {
                      */
 
   short max;        /* The index of the maximum score in slot 'score'
-		       (below). */
+                       (below). */
 
   double *score;    /* 
                     * Array of similarity (i.e. false-priming) scores,
                     * one for each entry in the 'repeat_lib' slot
                     * of the primargs struct.  In libprimer3.c,
-		    * score is set to NULL to indicate that
-		    * the rep_sim structure is uninitialized.
+                    * score is set to NULL to indicate that
+                    * the rep_sim structure is uninitialized.
                     */
 } rep_sim;
 
@@ -554,7 +569,7 @@ typedef struct primer_rec {
    */
         
   double temp; /* The oligo melting temperature calculated for the
-		* primer. */
+                * primer. */
         
   double gc_content;
         
@@ -570,8 +585,8 @@ typedef struct primer_rec {
   /* Delta G of disription of 5 3' bases. */
         
   int    start;    /* Position of the 5'-most base within the primer
-		      WITH RESPECT TO THE seq_args FIELD
-		      trimmed_seq. */
+                      WITH RESPECT TO THE seq_args FIELD
+                      trimmed_seq. */
         
   int    seq_quality; /* Minimum quality score of bases included. */   
   int    seq_end_quality;  /* Minimum quality core of the 5 3' bases. */
@@ -590,6 +605,17 @@ typedef struct primer_rec {
   /* Max 3' complementarity to any ectopic site in the
      template on the reverse complement of the given template
      strand. */
+
+  char *self_any_struct; /* Secondary structure of self_any */
+
+  char *self_end_struct; /* Secondary structure of self_end */
+
+  char *hairpin_struct; /* Secondary structure of hairpin_th */
+
+  char *template_mispriming_struct; /* Secondary structure of template_mispriming */
+
+  char *template_mispriming_r_struct; /* Secondary structure of template_mispriming_r */
+
   char   length;   /* Length of the oligo. */
   char   num_ns;   /* Number of Ns in the oligo. */
         
@@ -644,6 +670,12 @@ typedef struct primer_pair {
                            to ectopic sites in the template, on "same"
                            strand (* 100). */
 
+  char *compl_any_struct; /* Secondary structure of compl_any */
+
+  char *compl_end_struct; /* Secondary structure of compl_end */
+
+  char *template_mispriming_struct; /* Secondary structure of template_mispriming */
+
   double repeat_sim;    /* Maximum total similarity of both primers to the
                          * sequence from given file in fasta format.
                          */
@@ -672,9 +704,9 @@ typedef struct interval_array_t4 {
   int left_pairs[PR_MAX_INTERVAL_ARRAY][2];
   int right_pairs[PR_MAX_INTERVAL_ARRAY][2];
   int any_left;  /* set to 1 if the empty pair ",," is given for any
-		    left interval */
+                    left interval */
   int any_right; /* set to 1 if the empty pair ",," is given for any
-		    right interval */
+                    right interval */
   int any_pair;  /* set to 1 if both intervals are given as empty */
   int count;     /* total number of pairs */
 } interval_array_t4;
@@ -699,7 +731,7 @@ typedef struct oligo_stats {
   int compl_any;           /* Self-complementarity too high.                */
   int compl_end;           /* Self-complementarity at 3' end too high.      */
   int hairpin_th;          /* Hairpin structure too stable in
-			      thermodynamical approach                      */
+                              thermodynamical approach                      */
   int repeat_score;        /* Complementarity with repeat sequence too high.*/
   int poly_x;              /* Long mononucleotide sequence inside.          */
   int seq_quality;         /* Low quality of bases included.                */
@@ -709,9 +741,9 @@ typedef struct oligo_stats {
   int template_mispriming; /* Template mispriming score too high.           */
   int ok;                  /* Number of acceptable oligos.                  */
   int gmasked;             /* Added by T. Koressaar, number of gmasked
-			      oligos */
+                              oligos */
   int must_match_fail;     /* Added by A. Untergasser, number of oligos 
-			      failing must match */
+                              failing must match */
   int not_in_any_left_ok_region; /* Oligo not included in any of the
                                     left regions given in
                                     PRIMER_PAIR_OK_REGION_LIST. */
@@ -885,6 +917,7 @@ typedef struct p3retval {
 } p3retval;
 
 /* Deallocate a primer3 state */
+void destroy_secundary_structures(const p3_global_settings *pa, p3retval *retval);
 void destroy_p3retval(p3retval *);
 
 void destroy_dpal_thal_arg_holder();
@@ -1219,13 +1252,14 @@ const char *  pr_append_str_chars(const pr_append_str *x);
 const char *p3_get_pair_array_explain_string(const pair_array_t *);
 const char *p3_get_oligo_array_explain_string(const oligo_array *);
 
-const char  *libprimer3_release(void);
+const char *libprimer3_release(void);
 const char *primer3_copyright(void);
 
 /* An accessor function for a primer_rec *. */
 double oligo_max_template_mispriming(const primer_rec *);
 double oligo_max_template_mispriming_thermod(const primer_rec *);
-     
+char * oligo_max_template_mispriming_struct(const primer_rec *h);
+
 int   strcmp_nocase(const char *, const char *);
 
 void
@@ -1274,8 +1308,8 @@ int    p3_print_oligo_lists(const p3retval*,
    caller and pick_anyway is set.
 */
 void add_must_use_warnings(pr_append_str *warning,
-			   const char* text,
-			   const oligo_stats *stats);
+                           const char* text,
+                           const oligo_stats *stats);
 
 
 

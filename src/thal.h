@@ -1,6 +1,5 @@
-/* Copyright (c) 1996,1997,1998,1999,2000,2001,2004,2006,2007,2008,2009,2010
-                 2011,2012
- Whitehead Institute for Biomedical Research, Steve Rozen
+/* Copyright (c) 1996 - 2018
+ Whitehead Institute for Biomedical Research, Steve Rozen, Andreas Untergasser
  (http://purl.com/STEVEROZEN/), and Helen Skaletsky
  All rights reserved.
 
@@ -75,7 +74,7 @@
 extern const double _INFINITY;
 extern const double ABSOLUTE_ZERO;
 extern const int MAX_LOOP; /* the maximum size of loop that can be calculated;
-			    for larger loops formula must be implemented */
+                              for larger loops formula must be implemented */
 extern const int MIN_LOOP;
 
 /*** END CONSTANTS ***/
@@ -91,19 +90,17 @@ typedef enum thal_alignment_type {
 
 /* Structure for passing arguments to THermodynamic ALignment calculation */
 typedef struct {
-   int debug; /* if non zero, print debugging info to stderr */
    thal_alignment_type type; /* one of the
-	      1 THAL_ANY, (by default)
-	      2 THAL_END1,
-	      3 THAL_END2,
-	      4 THAL_HAIRPIN */
+              1 THAL_ANY, (by default)
+              2 THAL_END1,
+              3 THAL_END2,
+              4 THAL_HAIRPIN */
    int maxLoop;  /* maximum size of loop to consider; longer than 30 bp are not allowed */
    double mv; /* concentration of monovalent cations */
    double dv; /* concentration of divalent cations */
    double dntp; /* concentration of dNTP-s */
    double dna_conc; /* concentration of oligonucleotides */
    double temp; /* temperature from which hairpin structures will be calculated */
-   int temponly; /* if non zero, print only temperature to stderr */
    int dimer; /* if non zero, dimer structure is calculated */
 } thal_args;
 
@@ -113,7 +110,44 @@ typedef struct {
    double temp;
    int align_end_1;
    int align_end_2;
+   char *sec_struct;
 } thal_results;
+
+/* The files from the directory primer3_config loaded as strings */
+typedef struct thal_parameters {
+  char *dangle_dh;
+  char *dangle_ds;
+  char *loops_dh;
+  char *loops_ds;
+  char *stack_dh;
+  char *stack_ds;
+  char *stackmm_dh;
+  char *stackmm_ds;
+  char *tetraloop_dh;
+  char *tetraloop_ds;
+  char *triloop_dh;
+  char *triloop_ds;
+  char *tstack_tm_inf_ds;
+  char *tstack_dh;
+  char *tstack2_dh;
+  char *tstack2_ds;
+} thal_parameters;
+
+/* 
+ * THL_FAST    = 0 - score only with optimized functions (fast)
+ * THL_GENERAL = 1 - use general function without debug (slow)
+ * THL_DEBUG_F = 2 - debug mode with fast, print alignments on STDERR
+ * THL_DEBUG   = 3 - debug mode print alignments on STDERR
+ * THL_STRUCT  = 4 - calculate secondary structures as string
+ */
+typedef enum thal_mode { 
+  THL_FAST    = 0,
+  THL_GENERAL = 1,
+  THL_DEBUG_F = 2,
+  THL_DEBUG   = 3, 
+  THL_STRUCT  = 4
+} thal_mode;
+
 
 /*** END OF TYPEDEFS ***/
 
@@ -132,7 +166,13 @@ void set_thal_oligo_default_args(thal_args *a);
     exit(-1);
   }
 #endif
-int  get_thermodynamic_values(const char* path, thal_results *o);
+int  thal_set_null_parameters(thal_parameters *a);
+
+int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
+
+int  thal_free_parameters(thal_parameters *a);
+
+int  get_thermodynamic_values(const thal_parameters *tp, thal_results *o);
 
 void destroy_thal_structures();
 
@@ -143,8 +183,9 @@ void destroy_thal_structures();
 */
 
 void thal(const unsigned char *oligo1, 
-	  const unsigned char *oligo2, 
-	  const thal_args* a, 
-	  thal_results* o);
+          const unsigned char *oligo2, 
+          const thal_args* a,
+          const thal_mode mode, 
+          thal_results* o);
 
 #endif
