@@ -45,6 +45,9 @@
 #include <ctype.h>
 #include <math.h>
 #include <unistd.h>
+#include <fstream>
+#include <strstream>
+#include <exception>
 
 #if defined(__sun)
 #include <ieeefp.h>
@@ -765,70 +768,31 @@ reverse(unsigned char *s)
 
 #define INIT_BUF_SIZE 1024
 
-static char* 
-readParamFile(const char* dirname, const char* fname, thal_results* o)
+upis
+readParamFile(const std::filesystem::path& dirname,
+              const std::filesystem::path& fname
+              )
 {
-  FILE* file;
-  char* ret = NULL;
-  char* paramdir = NULL;
-  paramdir = (char*) safe_malloc(strlen(dirname) + strlen(fname) + 2, o);
-  strcpy(paramdir, dirname);
-#ifdef OS_WIN
-  if (paramdir[strlen(paramdir) - 1] != '\\') {
-    strcat(paramdir, "\\\0");
+  std::ifstream file {(dirname / fname).string()};
+  if (!file) {
+    throw std::runtime_error( "Unable to open file %s" + (dirname / fname).string());
   }
-#else
-  if (paramdir[strlen(paramdir) - 1] != '/') {
-    strcat(paramdir, "/\0");
-  }
-#endif
-  strcat(paramdir, fname);
-  if (!(file = fopen(paramdir, "r"))) {
-    sprintf(o->msg, "Unable to open file %s", paramdir);
-    if (paramdir != NULL) {
-      free(paramdir);
-      paramdir = NULL;
-    }
-    longjmp(_jmp_buf, 1);
-    return NULL;
-  }
-  if (paramdir != NULL) {
-    free(paramdir);
-    paramdir = NULL;
-  }
-  char c;
-  int i = 0;
-  size_t ssz = INIT_BUF_SIZE;
-  size_t remaining_size;
-  remaining_size = ssz;
-  ret = (char*) safe_malloc(ssz, o);
-  while (1) {
-    if (feof(file)) {
-      ret[i] = '\0';
-      fclose(file);
-      return ret;
-    }
-    c = fgetc(file);
-    remaining_size -= sizeof(char);
-    if (remaining_size <= 0) {
-      if (ssz >= INT_MAX / 2) {
-        strcpy(o->msg, "Out of memory");
-	free(ret);
-	longjmp(_jmp_buf, 1);
-	return NULL;
-      } else {
-        ssz += INIT_BUF_SIZE;
-	remaining_size += INIT_BUF_SIZE;
-      }
-      ret = (char *) safe_realloc(ret, ssz, o);
-    }
-    ret[i] = c;
-    i++;
-  }
+   // read the file
+   auto r = std::make_unique<std::strstream>();
+   (*r) << fi.rdbuf();   // this will eats the new-lines ??    //upis res= std::move(r);
+   return r;
+}
+
+#include <strstream>
+#include "primer3_config/stack.dh.h"
+
+int thal_parameters::set_defaults( )
+{
+   this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
 }
 
 int
-thal_load_parameters(const char *path, thal_parameters *a, thal_results* o)
+thal_load_parameters(const std::filesystem::path& dirname )
 {
   thal_free_parameters(a);
   if (setjmp(_jmp_buf) != 0) {
@@ -839,7 +803,7 @@ thal_load_parameters(const char *path, thal_parameters *a, thal_results* o)
   a->dangle_ds = readParamFile(path, "dangle.ds", o);
   a->loops_dh = readParamFile(path, "loops.dh", o);
   a->loops_ds = readParamFile(path, "loops.ds", o);
-  a->stack_dh = readParamFile(path, "stack.dh", o);
+  a->stack_dh = readParamFile(dirname, "stack.dh", o);
   a->stack_ds = readParamFile(path, "stack.ds", o);
   a->stackmm_dh = readParamFile(path, "stackmm.dh", o);
   a->stackmm_ds = readParamFile(path, "stackmm.ds", o);

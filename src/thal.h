@@ -41,7 +41,8 @@
 #include <math.h>
 #include <limits.h>
 #include <string>
-#include <filesystem>
+#include <istream>
+#include <memory>
 
 #include "filesystem.hpp"
 
@@ -82,24 +83,34 @@ extern const int MIN_LOOP;
 
 /*** END CONSTANTS ***/
 
-/* The files from the directory primer3_config loaded as strings */
+using upis=std::unique_ptr<std::istream>;
+
+/* The files from the directory primer3_config loaded as istrings.
+   The actual parameters are static-global values in thal.c*/
 struct thal_parameters {
-    char *dangle_dh;
-    char *dangle_ds;
-    char *loops_dh;
-    char *loops_ds;
-    char *stack_dh;
-    char *stack_ds;
-    char *stackmm_dh;
-    char *stackmm_ds;
-    char *tetraloop_dh;
-    char *tetraloop_ds;
-    char *triloop_dh;
-    char *triloop_ds;
-    char *tstack_tm_inf_ds;
-    char *tstack_dh;
-    char *tstack2_dh;
-    char *tstack2_ds;
+    upis dangle_dh;
+    upis dangle_ds;
+    std::istream loops_dh;
+    std::istream loops_ds;
+    upis stack_dh;
+    std::istream stack_ds;
+    std::istream stackmm_dh;
+    std::istream stackmm_ds;
+    std::istream tetraloop_dh;
+    std::istream tetraloop_ds;
+    std::istream triloop_dh;
+    std::istream triloop_ds;
+    std::istream tstack_tm_inf_ds;
+    std::istream tstack_dh;
+    std::istream tstack2_dh;
+    std::istream tstack2_ds;
+
+    int set_defaults( );
+    // int set_default_thal_parameters(thal_parameters *a);
+    int load(const std::filesystem::path& pth ){};
+    // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
+
+    int  parse_thermodynamic_values( );
 } ;
 
 constexpr int  MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
@@ -134,14 +145,8 @@ class CProgParam_ThAl
     void set_defaults      ( );
     void set_oligo_defaults( );
 
-    int load(const std::filesystem::path& pth ){};
-    // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
-    // void destroy_thal_structures();
     ~CProgParam_ThAl() = default;
     // int  thal_free_parameters(thal_parameters *a);
-
-    int  get_thermodynamic_values(const thal_parameters *tp);
-
 } ;
 
 /* Structure for receiving results from the thermodynamic alignment calculation */
