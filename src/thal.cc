@@ -864,34 +864,18 @@ readLoop(std::istream& istr , double &v1, double &v2, double &v3 )
 
 /* Reads a line containing a short string and a double, used for reading a triloop or tetraloop. */
 static int
-readTLoop(char **str, char *s, double *v, int triloop, thal_results *o)
+readTLoop(std::istream& istr, std::string& s, double &v, int triloop )
 {
-  char *line = th_read_str_line(str, o);
-  if (!line) return -1;
-  char *p = line, *q;
-  /* skip first spaces */
-  while (isspace(*p)) p++;
+    if (triloop)
+        s.reserve(5);                    /*triloop string has 5 characters*/
+    else
+        s.reserve(6);                    /*tetraloop string has 6 characters*/
+
   /* read the string */
-  q = p;
-  while (isalpha(*q)) q++;
-  *q = '\0'; q++;
-  if (triloop) {
-    strncpy(s, p, 5);   /*triloop string has 5 characters*/
-    s[5] = '\0';
-  } else {
-    strncpy(s, p, 6);   /*tetraloop string has 6 characters*/
-    s[6] = '\0';
-  }
-  /* skip all spaces */
-  while (isspace(*q)) q++;
-  p = q;
-  while (!isspace(*p) && (*p != '\0')) p++;
-  *p = '\0';
-  if (!strcmp(q, "inf")) *v = _INFINITY;
-  else sscanf(q, "%lg", v);
-  if (line != NULL) {
-    free(line);
-  }
+  istr >> s;
+
+  v = readDouble(istr);
+
   return 0;
 } 
 
