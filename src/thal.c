@@ -49,6 +49,10 @@
 #include <strstream>
 #include <exception>
 
+#include "primer3_config/dangle.dh.hpp"
+#include "primer3_config/stack.dh.hpp"
+
+
 #if defined(__sun)
 #include <ieeefp.h>
 #endif
@@ -343,16 +347,16 @@ get_thermodynamic_values(const thal_parameters *tp, thal_results *o)
   if (setjmp(_jmp_buf) != 0) {
      return -1;
   }
-  getStack(stackEntropies, stackEnthalpies, tp, o);
+  getStack    ( stackEntropies,     stackEnthalpies,     tp, o);
   /* verifyStackTable(stackEntropies, "entropy");
      verifyStackTable(stackEnthalpies, "enthalpy"); */ /* this is for code debugging */
-  getStackint2(stackint2Entropies, stackint2Enthalpies, tp, o);
-  getDangle(dangleEntropies3, dangleEnthalpies3, dangleEntropies5, dangleEnthalpies5, tp, o);
-  getLoop(hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
-          interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
-  getTstack(tstackEntropies, tstackEnthalpies, tp, o);
-  getTstack2(tstack2Entropies, tstack2Enthalpies, tp, o);
-  getTriloop(&triloopEntropies, &triloopEnthalpies, &numTriloops, tp, o);
+  getStackint2( stackint2Entropies, stackint2Enthalpies, tp, o);
+  getDangle   ( dangleEntropies3,     dangleEnthalpies3,     dangleEntropies5,   dangleEnthalpies5, tp, o);
+  getLoop     ( hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
+                interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
+  getTstack   ( tstackEntropies,     tstackEnthalpies, tp, o);
+  getTstack2  ( tstack2Entropies,    tstack2Enthalpies, tp, o);
+  getTriloop  (&triloopEntropies,   &triloopEnthalpies, &numTriloops, tp, o);
   getTetraloop(&tetraloopEntropies, &tetraloopEnthalpies, &numTetraloops, tp, o);
   /* getting the AT-penalties */
   tableStartATS(AT_S, atpS);
@@ -783,9 +787,6 @@ readParamFile(const std::filesystem::path& dirname,
    return r;
 }
 
-#include <strstream>
-#include "primer3_config/stack.dh.hpp"
-
 int thal_parameters::set_defaults( )
 {
     this->dangle_dh = std::make_unique<std::istrstream>(dangle_dh_data);
@@ -799,30 +800,26 @@ int thal_parameters::set_defaults( )
     this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
 }
 
-int
-thal_load_parameters(const std::filesystem::path& dirname )
+int thal_parameters::load (const std::filesystem::path& dirname )
 {
-  thal_free_parameters(a);
-  if (setjmp(_jmp_buf) != 0) {
-	 printf("longjump\n");
-    return -1;
-  }
-  a->dangle_dh = readParamFile(path, "dangle.dh", o);
-  a->dangle_ds = readParamFile(path, "dangle.ds", o);
-  a->loops_dh = readParamFile(path, "loops.dh", o);
-  a->loops_ds = readParamFile(path, "loops.ds", o);
-  a->stack_dh = readParamFile(dirname, "stack.dh", o);
-  a->stack_ds = readParamFile(path, "stack.ds", o);
-  a->stackmm_dh = readParamFile(path, "stackmm.dh", o);
-  a->stackmm_ds = readParamFile(path, "stackmm.ds", o);
-  a->tetraloop_dh = readParamFile(path, "tetraloop.dh", o);
-  a->tetraloop_ds = readParamFile(path, "tetraloop.ds", o);
-  a->triloop_dh = readParamFile(path, "triloop.dh", o);
-  a->triloop_ds = readParamFile(path, "triloop.ds", o);
-  a->tstack_tm_inf_ds = readParamFile(path, "tstack_tm_inf.ds", o);
-  a->tstack_dh = readParamFile(path, "tstack.dh", o);
-  a->tstack2_dh = readParamFile(path, "tstack2.dh", o);
-  a->tstack2_ds = readParamFile(path, "tstack2.ds", o);
+
+  a->dangle_dh  = readParamFile(dirname, "dangle.dh", o);
+  a->dangle_ds  = readParamFile(dirname, "dangle.ds", o);
+  a->loops_dh   = readParamFile(dirname, "loops.dh", o);
+  a->loops_ds   = readParamFile(dirname, "loops.ds", o);
+  a->stack_dh   = readParamFile(dirname, "stack.dh", o);
+  a->stack_ds   = readParamFile(dirname, "stack.ds", o);
+  a->stackmm_dh = readParamFile(dirname, "stackmm.dh", o);
+  a->stackmm_ds = readParamFile(dirname, "stackmm.ds", o);
+  a->tetraloop_dh = readParamFile(dirname, "tetraloop.dh", o);
+  a->tetraloop_ds = readParamFile(dirname, "tetraloop.ds", o);
+  a->triloop_dh = readParamFile(dirname, "triloop.dh", o);
+  a->triloop_ds = readParamFile(dirname, "triloop.ds", o);
+  a->tstack_tm_inf_ds = readParamFile(dirname, "tstack_tm_inf.ds", o);
+  a->tstack_dh  = readParamFile(dirname, "tstack.dh", o);
+  a->tstack2_dh = readParamFile(dirname, "tstack2.dh", o);
+  a->tstack2_ds = readParamFile(dirname, "tstack2.ds", o);
+
   return 0;
 }
 

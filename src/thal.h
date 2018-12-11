@@ -112,7 +112,7 @@ struct thal_parameters
 
     int set_defaults( );
     // int set_default_thal_parameters(thal_parameters *a);
-    int load(const std::filesystem::path& pth ){};
+    int load(const std::filesystem::path& dirname );
     // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
 
     int  parse_thermodynamic_values( );
