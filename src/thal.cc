@@ -907,23 +907,23 @@ getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], 
 }
 
 static void 
-getStackint2(double stackint2Entropies[5][5][5][5], double stackint2Enthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o)
+getStackint2(double stackint2Entropies[5][5][5][5], double stackint2Enthalpies[5][5][5][5], const thal_parameters *tp )
 {
    int i, j, ii, jj;
-   char *pt_ds = tp->stackmm_ds;
-   char *pt_dh = tp->stackmm_dh;
+   tp->stackmm_ds->seekg(ios_base::beg);
+   tp->stackmm_dh->seekg(ios_base::beg);
    for (i = 0; i < 5; ++i) {
       for (ii = 0; ii < 5; ++ii) {
          for (j = 0; j < 5; ++j) {
             for (jj = 0; jj < 5; ++jj) {
                if (i == 4 || j == 4 || ii == 4 || jj == 4) {
-                  stackint2Entropies[i][ii][j][jj] = -1.0;
+                  stackint2Entropies [i][ii][j][jj] = -1.0;
                   stackint2Enthalpies[i][ii][j][jj] = _INFINITY;
                } else {
-                  stackint2Entropies[i][ii][j][jj] = readDouble(&pt_ds, o);
-                  stackint2Enthalpies[i][ii][j][jj] = readDouble(&pt_dh, o);
+                  stackint2Entropies [i][ii][j][jj] = readDouble(*tp->stackmm_ds );
+                  stackint2Enthalpies[i][ii][j][jj] = readDouble(*tp->stackmm_dh );
                   if (!isFinite(stackint2Entropies[i][ii][j][jj]) || !isFinite(stackint2Enthalpies[i][ii][j][jj])) {
-                     stackint2Entropies[i][ii][j][jj] = -1.0;
+                     stackint2Entropies [i][ii][j][jj] = -1.0;
                      stackint2Enthalpies[i][ii][j][jj] = _INFINITY;
                   }
                }
@@ -953,26 +953,28 @@ verifyStackTable(double stack[5][5][5][5], char* type)
 */
 
 static void 
-getDangle(double dangleEntropies3[5][5][5], double dangleEnthalpies3[5][5][5], double dangleEntropies5[5][5][5],
-          double dangleEnthalpies5[5][5][5], const thal_parameters *tp, thal_results* o)
+getDangle(double dangleEntropies3 [5][5][5],
+          double dangleEnthalpies3[5][5][5],
+          double dangleEntropies5 [5][5][5],
+          double dangleEnthalpies5[5][5][5], const thal_parameters *tp )
 {
    int i, j, k;
-   char *pt_ds = tp->dangle_ds;
-   char *pt_dh = tp->dangle_dh;
+    tp->dangle_ds->seekg(ios_base::beg);
+    tp->dangle_dh->seekg(ios_base::beg);
    for (i = 0; i < 5; ++i)
      for (j = 0; j < 5; ++j)
        for (k = 0; k < 5; ++k) {
           if (i == 4 || j == 4) {
-             dangleEntropies3[i][k][j] = -1.0;
+             dangleEntropies3 [i][k][j] = -1.0;
              dangleEnthalpies3[i][k][j] = _INFINITY;
           } else if (k == 4) {
-             dangleEntropies3[i][k][j] = -1.0;
+             dangleEntropies3 [i][k][j] = -1.0;
              dangleEnthalpies3[i][k][j] = _INFINITY;
           } else {
-             dangleEntropies3[i][k][j] = readDouble(&pt_ds, o);
-             dangleEnthalpies3[i][k][j] = readDouble(&pt_dh, o);
+             dangleEntropies3 [i][k][j] = readDouble(*tp->dangle_ds );
+             dangleEnthalpies3[i][k][j] = readDouble(*tp->dangle_dh );
              if(!isFinite(dangleEntropies3[i][k][j]) || !isFinite(dangleEnthalpies3[i][k][j])) {
-                dangleEntropies3[i][k][j] = -1.0;
+                dangleEntropies3 [i][k][j] = -1.0;
                 dangleEnthalpies3[i][k][j] = _INFINITY;             
              }
           }
@@ -982,16 +984,16 @@ getDangle(double dangleEntropies3[5][5][5], double dangleEnthalpies3[5][5][5], d
      for (j = 0; j < 5; ++j)
        for (k = 0; k < 5; ++k) {
           if (i == 4 || j == 4) {
-             dangleEntropies5[i][j][k] = -1.0;
+             dangleEntropies5 [i][j][k] = -1.0;
              dangleEnthalpies5[i][j][k] = _INFINITY;
           } else if (k == 4) {
-             dangleEntropies5[i][j][k] = -1.0;
+             dangleEntropies5 [i][j][k] = -1.0;
              dangleEnthalpies5[i][j][k] = _INFINITY;
           } else {
-             dangleEntropies5[i][j][k] = readDouble(&pt_ds, o);
-             dangleEnthalpies5[i][j][k] = readDouble(&pt_dh, o);
+             dangleEntropies5 [i][j][k] = readDouble(*tp->dangle_ds );
+             dangleEnthalpies5[i][j][k] = readDouble(*tp->dangle_dh);
              if(!isFinite(dangleEntropies5[i][j][k]) || !isFinite(dangleEnthalpies5[i][j][k])) {
-                dangleEntropies5[i][j][k] = -1.0;
+                dangleEntropies5 [i][j][k] = -1.0;
                 dangleEnthalpies5[i][j][k] = _INFINITY;
              }
           }
