@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef THERMODYNAMIC_PARAMETERS_H
 #define THERMODYNAMIC_PARAMETERS_H 1
-#include "thal.h"
+#include "thal.hpp"
 
 #ifdef __cplusplus
 extern "C" {

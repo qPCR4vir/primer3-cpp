@@ -42,7 +42,7 @@ set(LIBMASKER_DYN   libmasker.a.so.1.0.0)
 add_library(thal)
 set_property( TARGET thal PROPERTY CXX_STANDARD 14 )
 target_link_libraries(thal PUBLIC "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
-target_sources(thal PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src/thal.c ${CMAKE_CURRENT_LIST_DIR}/src/thal.h)
+target_sources(thal PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src/thal.cc ${CMAKE_CURRENT_LIST_DIR}/src/thal.hpp)
 
 include(${CMAKE_CURRENT_LIST_DIR}/select_filesystem.cmake)
 
@@ -64,8 +64,8 @@ add_executable(${PRIMER_EXE}
 
         src/libprimer3.cc
         src/p3_seq_lib.c
-        src/dpal.c
-        src/thal.c
+        src/dpal.cc
+        src/thal.cc
         src/oligotm.c
         src/masker.cc
         src/mman.c
@@ -81,7 +81,7 @@ add_executable(${NTDPAL_EXE}
 
         src/ntdpal_main.cc
 
-        src/dpal.c
+        src/dpal.cc
 
         )
 

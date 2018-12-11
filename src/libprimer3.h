@@ -116,7 +116,7 @@ typedef struct pr_append_str {
 
 #include "oligotm.h"
 #include "masker.h"
-#include "thal.h"
+#include "thal.hpp"
 #include "thal_parameters.h"
 #include "dpal.h"
 

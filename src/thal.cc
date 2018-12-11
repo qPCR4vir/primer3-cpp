@@ -62,7 +62,7 @@
 #include <ieeefp.h>
 #endif
 
-#include "thal.h"
+#include "thal.hpp"
 
 /*#define DEBUG*/
 #ifndef MIN_HRPN_LOOP
