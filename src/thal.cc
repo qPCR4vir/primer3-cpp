@@ -50,6 +50,8 @@
 #include <exception>
 
 #include "primer3_config/dangle.dh.hpp"
+#include "primer3_config/dangle.ds.hpp"
+#include "primer3_config/loops.dh.hpp"
 #include "primer3_config/loops.ds.hpp"
 #include "primer3_config/stack.dh.hpp"
 #include "primer3_config/stack.ds.hpp"
@@ -784,11 +786,13 @@ readParamFile(const std::filesystem::path& dirname,
 {
   std::ifstream file {(dirname / fname).string()};
   if (!file) {
-    throw std::runtime_error( "Unable to open file %s" + (dirname / fname).string());
+    throw std::runtime_error( "Trying to read Th parameters file: Unable to open file: "
+                               + (dirname / fname).string());
   }
    // read the file
    auto r = std::make_unique<std::strstream>();
    (*r) << fi.rdbuf();   // this will eats the new-lines ??    //upis res= std::move(r);
+   // see https://en.cppreference.com/w/cpp/io/basic_ostream/operator_ltlt
    return r;
 }
 
