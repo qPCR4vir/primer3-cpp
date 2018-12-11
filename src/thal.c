@@ -50,6 +50,11 @@
 #include <exception>
 
 #include "primer3_config/dangle.dh.hpp"
+#include "primer3_config/loops.ds.hpp"
+#include "primer3_config/stack.dh.hpp"
+#include "primer3_config/stack.ds.hpp"
+
+#include "primer3_config/stack.dh.hpp"
 #include "primer3_config/stack.dh.hpp"
 
 
@@ -789,15 +794,15 @@ readParamFile(const std::filesystem::path& dirname,
 
 int thal_parameters::set_defaults( )
 {
-    this->dangle_dh = std::make_unique<std::istrstream>(dangle_dh_data);
-    this->dangle_ds = std::make_unique<std::istrstream>(dangle_ds_data);
-    this->loops_dh  = std::make_unique<std::istrstream>(loops_dh_data );
-    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
-    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
-    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
-    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
-    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
-    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->dangle_dh    = std::make_unique<std::istrstream>(dangle_dh_data );
+    this->dangle_ds    = std::make_unique<std::istrstream>(dangle_ds_data);
+    this->loops_dh     = std::make_unique<std::istrstream>(loops_dh_data );
+    this->loops_ds     = std::make_unique<std::istrstream>(loops_ds_data );
+    this->stack_dh     = std::make_unique<std::istrstream>(stack_dh_data );
+    this->stack_ds     = std::make_unique<std::istrstream>(stack_ds_data );
+    this->stackmm_dh   = std::make_unique<std::istrstream>(stackmm_dh_data);
+    this->stackmm_ds   = std::make_unique<std::istrstream>(stackmm_ds_data);
+    this->tetraloop_dh = std::make_unique<std::istrstream>(tetraloop_dh_data );
 }
 
 int thal_parameters::load (const std::filesystem::path& dirname )

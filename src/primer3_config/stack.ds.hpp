@@ -1,4 +1,4 @@
-constexpr char[] stack_dh_data{R"(inf
+constexpr char[] stack_ds_data{R"(inf
 inf
 inf
 inf
@@ -13,7 +13,7 @@ inf
 inf
 inf
 inf
--7900
+-22.2
 inf
 inf
 inf
@@ -28,7 +28,7 @@ inf
 inf
 inf
 inf
--8400
+-22.4
 inf
 inf
 inf
@@ -43,7 +43,7 @@ inf
 inf
 inf
 inf
--7800
+-21.0
 inf
 inf
 inf
@@ -58,7 +58,7 @@ inf
 inf
 inf
 inf
--7200
+-20.4
 inf
 inf
 inf
@@ -73,7 +73,7 @@ inf
 inf
 inf
 inf
--8500
+-22.7
 inf
 inf
 inf
@@ -88,7 +88,7 @@ inf
 inf
 inf
 inf
--8000
+-19.9
 inf
 inf
 inf
@@ -103,7 +103,7 @@ inf
 inf
 inf
 inf
--10600
+-27.2
 inf
 inf
 inf
@@ -118,7 +118,7 @@ inf
 inf
 inf
 inf
--7800
+-21.0
 inf
 inf
 inf
@@ -133,7 +133,7 @@ inf
 inf
 inf
 inf
--8200
+-22.2
 inf
 inf
 inf
@@ -148,7 +148,7 @@ inf
 inf
 inf
 inf
--9800
+-24.4
 inf
 inf
 inf
@@ -163,7 +163,7 @@ inf
 inf
 inf
 inf
--8000
+-19.9
 inf
 inf
 inf
@@ -178,7 +178,7 @@ inf
 inf
 inf
 inf
--8400
+-22.4
 inf
 inf
 inf
@@ -193,7 +193,7 @@ inf
 inf
 inf
 inf
--7200
+-21.3
 inf
 inf
 inf
@@ -208,7 +208,7 @@ inf
 inf
 inf
 inf
--8200
+-22.2
 inf
 inf
 inf
@@ -223,7 +223,7 @@ inf
 inf
 inf
 inf
--8500
+-22.7
 inf
 inf
 inf
@@ -238,7 +238,7 @@ inf
 inf
 inf
 inf
--7900
+-22.2
 inf
 inf
 inf
@@ -254,4 +254,3 @@ inf
 inf
 inf
 inf)"};
-
