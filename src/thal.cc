@@ -131,19 +131,19 @@
 #   endif
 # endif
 
-static const double R    = 1.9872; /* cal/Kmol */
+static const double R    = 1.9872;          /* cal/Kmol */
 static const double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
-static const double ILAH = 0.0; /* Internal Loop EntHalpy Asymmetry correction */
-static const double AT_H = 2200.0; /* AT penalty */
-static const double AT_S = 6.9; /* AT penalty */
+static const double ILAH = 0.0;             /* Internal Loop EntHalpy Asymmetry correction */
+static const double AT_H = 2200.0;          /* AT penalty */
+static const double AT_S = 6.9;             /* AT penalty */
 static const double MinEntropyCutoff = -2500.0; /* to filter out non-existing entropies */
-static const double MinEntropy = -3224.0; /* initiation */
-static const double G2   = 0.0; /* structures w higher G are considered to be unstabile */
-       const double ABSOLUTE_ZERO = 273.15;
-       const int    MIN_LOOP = 0;
+static const double MinEntropy       = -3224.0; /* initiation */
+static const double G2               = 0.0; /* structures w higher G are considered to be unstabile */
+       const double ABSOLUTE_ZERO    = 273.15;
+       const int    MIN_LOOP         = 0;
 //static const char BASES[5] = {'A', 'C', 'G', 'T', 'N'}; /* bases to be considered - N is every symbol that is not A, G, C,$
-//                                                  */
 //static const char BASE_PAIRS[4][4] = {"A-T", "C-G", "G-C", "T-A" }; /* allowed basepairs */
+
 /* matrix for allowed; bp 0 - no bp, watson crick bp - 1 */
 static const int BPI[5][5] =  {
      {0, 0, 0, 1, 0}, /* A, C, G, T, N; */
@@ -179,28 +179,8 @@ static unsigned char str2int(char c); /* converts DNA sequence to int; 0-A, 1-C,
 
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
                                                                    for Tm by SantaLucia et al */
-static char* readParamFile(const char* dirname, const char* fname, thal_results* o); /* file of thermodynamic params */
-
-/* get thermodynamic tables */
-static double readDouble(char **str, thal_results* o);
-
-static void readLoop(char **str, double *v1, double *v2, double *v3, thal_results *o);
-
-static int readTLoop(char **str, char *s, double *v, int triloop, thal_results *o);
-
-static void getStack(   double stackEntropies[5][5][5][5],
-                        double stackEnthalpies[5][5][5][5],
-                        const thal_parameters *tp,
-                        thal_results* o);
 
 /*static void verifyStackTable(double stack[5][5][5][5], char* type);*/ /* just for debugging; the method is turned off by default */
-
-static void getStackint2(double stackEntropiesint2[5][5][5][5], double stackint2Enthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o);
-
-static void getDangle(double dangleEntropies3[5][5][5], double dangleEnthalpies3[5][5][5], double dangleEntropies5[5][5][5],
-                      double dangleEnthalpies5[5][5][5], const thal_parameters *tp, thal_results* o);
-
-static void getTstack(double tstackEntropies[5][5][5][5], double tstackEnthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o);
 
 static void getTstack2(double tstack2Entropies[5][5][5][5], double tstack2Enthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o);
 
@@ -344,33 +324,6 @@ static struct tetraloop* tetraloopEnthalpies = NULL; /* ther penalties for given
 static jmp_buf _jmp_buf;
 
 
-/* Read the thermodynamic values (parameters) from the parameter files
-   in the directory specified by 'path'.  Return 0 on success and -1
-   on error. The thermodynamic values are stored in multiple static
-   variables. */
-int 
-get_thermodynamic_values(const thal_parameters *tp, thal_results *o)
-{
-  if (setjmp(_jmp_buf) != 0) {
-     return -1;
-  }
-  getStack    ( stackEntropies,     stackEnthalpies,     tp, o);
-  /* verifyStackTable(stackEntropies, "entropy");
-     verifyStackTable(stackEnthalpies, "enthalpy"); */ /* this is for code debugging */
-  getStackint2( stackint2Entropies, stackint2Enthalpies, tp, o);
-  getDangle   ( dangleEntropies3,     dangleEnthalpies3,     dangleEntropies5,   dangleEnthalpies5, tp, o);
-  getLoop     ( hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
-                interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
-  getTstack   ( tstackEntropies,     tstackEnthalpies, tp, o);
-  getTstack2  ( tstack2Entropies,    tstack2Enthalpies, tp, o);
-  getTriloop  (&triloopEntropies,   &triloopEnthalpies, &numTriloops, tp, o);
-  getTetraloop(&tetraloopEntropies, &tetraloopEnthalpies, &numTetraloops, tp, o);
-  /* getting the AT-penalties */
-  tableStartATS(AT_S, atpS);
-  tableStartATH(AT_H, atpH);
-
-  return 0;
-}
 
 void 
 destroy_thal_structures()
@@ -391,292 +344,6 @@ destroy_thal_structures()
     free(tetraloopEnthalpies);
     tetraloopEnthalpies = NULL;
   }
-}
-
-/* central method: execute all sub-methods for calculating secondary
-   structure for dimer or for monomer */
-void 
-thal(const unsigned char *oligo_f, 
-     const unsigned char *oligo_r, 
-     const thal_args *a,
-     const thal_mode mode,
-     thal_results *o)
-{
-   double* SH;
-   int i, j;
-   int len_f, len_r;
-   int k;
-   int *bp;
-   unsigned char *oligo2_rev = NULL;
-   double mh, ms;
-   double G1, bestG;
-
-   send5 = hend5 = NULL;
-   enthalpyDPT = entropyDPT = NULL;
-   numSeq1 = numSeq2 = NULL;
-   oligo1 = oligo2 = NULL;
-   strcpy(o->msg, "");
-   o->temp = THAL_ERROR_SCORE;
-   errno = 0; 
-
-   if (setjmp(_jmp_buf) != 0) {
-     o->temp = THAL_ERROR_SCORE;
-     return;  /* If we get here, that means we returned via a
-                 longjmp.  In this case errno might be ENOMEM,
-                 but not necessarily. */
-   }
-
-   CHECK_ERROR(NULL == oligo_f, "NULL first sequence");
-   CHECK_ERROR(NULL == oligo_r, "NULL second sequence");
-   len_f = length_unsig_char(oligo_f);
-   len_r = length_unsig_char(oligo_r);
-
-   /*CHECK_ERROR(1==len_f, "Length 1 first sequence");
-   CHECK_ERROR(1==len_r, "Length 1 second sequence"); */
-   /* The following error messages will be seen by end users and will
-      not be easy to understand. */
-   CHECK_ERROR((len_f > THAL_MAX_ALIGN) && (len_r > THAL_MAX_ALIGN),
-               "Both sequences longer than " XSTR(THAL_MAX_ALIGN)
-               " for thermodynamic alignment");
-   CHECK_ERROR((len_f > THAL_MAX_SEQ), 
-               LONG_SEQ_ERR_STR(THAL_MAX_SEQ) " (1)");
-   CHECK_ERROR((len_r > THAL_MAX_SEQ), 
-               LONG_SEQ_ERR_STR(THAL_MAX_SEQ) " (2)");
-
-   CHECK_ERROR(NULL == a,  "NULL 'in' pointer");
-   if (NULL == o) return; /* Leave it to the caller to crash */
-   CHECK_ERROR(a->type != thal_any
-               && a->type != thal_end1
-               && a->type != thal_end2
-               && a->type != thal_hairpin,
-               "Illegal type");
-   o->align_end_1 = -1;
-   o->align_end_2 = -1;
-   if (oligo_f && '\0' == *oligo_f) {
-      strcpy(o->msg, "Empty first sequence");
-      o->temp = 0.0;
-      return;
-   }
-   if (oligo_r && '\0' == *oligo_r) {
-      strcpy(o->msg, "Empty second sequence");
-      o->temp = 0.0;
-      return;
-   }
-   if (0 == len_f) {
-      o->temp = 0.0;
-      return;
-   }
-   if (0 == len_r) {
-      o->temp = 0.0;
-      return;
-   }
-   if(a->type!=3) {
-      oligo1 = (unsigned char*) safe_malloc((len_f + 1) * sizeof(unsigned char), o);
-      oligo2 = (unsigned char*) safe_malloc((len_r + 1) * sizeof(unsigned char), o);
-      strcpy((char*)oligo1,(const char*)oligo_f);
-      strcpy((char*)oligo2,(const char*)oligo_r);
-   } else  {
-      oligo1 = (unsigned char*) safe_malloc((len_r + 1) * sizeof(unsigned char), o);
-      oligo2 = (unsigned char*) safe_malloc((len_f + 1) * sizeof(unsigned char), o);
-      strcpy((char*)oligo1,(const char*)oligo_r);
-      strcpy((char*)oligo2,(const char*)oligo_f);
-   }
-   /*** INIT values for unimolecular and bimolecular structures ***/
-   if (a->type==4) { /* unimolecular folding */
-      len2 = length_unsig_char(oligo2);
-      len3 = len2 -1;
-      dplx_init_H = 0.0;
-      dplx_init_S = -0.00000000001;
-      RC=0;
-   } else if(a->type!=4) {
-      /* hybridization of two oligos */
-      dplx_init_H = 200;
-      dplx_init_S = -5.7;
-      if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2)) {
-         RC = R  * log(a->dna_conc/1000000000.0);
-      } else {
-         RC = R  * log(a->dna_conc/4000000000.0);
-      }
-      if(a->type!=3) {
-         oligo2_rev = (unsigned char*) safe_malloc((length_unsig_char(oligo_r) + 1) * sizeof(unsigned char), o);
-         strcpy((char*)oligo2_rev,(const char*)oligo_r);
-      } else {
-         oligo2_rev = (unsigned char*) safe_malloc((length_unsig_char(oligo_f) + 1) * sizeof(unsigned char), o);
-         strcpy((char*)oligo2_rev,(const char*)oligo_f);
-      }
-      reverse(oligo2_rev); /* REVERSE oligo2, so it goes to dpt 3'->5' direction */
-      free(oligo2);
-      oligo2=NULL;
-      oligo2=&oligo2_rev[0];
-   } else {
-      strcpy(o->msg, "Wrong alignment type!");
-      o->temp = THAL_ERROR_SCORE;
-      errno=0;
-#ifdef DEBUG
-      fprintf(stderr, o->msg);
-#endif
-      return;
-   }
-   len1 = length_unsig_char(oligo1);
-   len2 = length_unsig_char(oligo2);
-   /* convert nucleotides to numbers */
-   numSeq1 = (unsigned char*) safe_realloc(numSeq1, len1 + 2, o);
-   numSeq2 = (unsigned char*) safe_realloc(numSeq2, len2 + 2, o);
-
-   /*** Calc part of the salt correction ***/
-   saltCorrection=saltCorrectS(a->mv,a->dv,a->dntp); /* salt correction for entropy, must be multiplied with N, which is
-                                                   the total number of phosphates in the duplex divided by 2; 8bp dplx N=7 */
-
-   if(a->type == 4){ /* monomer */
-      /* terminal basepairs */
-      send5 = (double*) safe_realloc(send5, (len1 + 1) * sizeof(double), o);
-      hend5 = (double*) safe_realloc(hend5, (len1 + 1) * sizeof(double), o);
-   }
-   for(i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
-   for(i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
-   for(i = 1; i <= len1; ++i) numSeq1[i] = str2int(oligo1[i - 1]);
-   for(i = 1; i <= len2; ++i) numSeq2[i] = str2int(oligo2[i - 1]);
-   numSeq1[0] = numSeq1[len1 + 1] = numSeq2[0] = numSeq2[len2 + 1] = 4; /* mark as N-s */
-   if (a->type==4) { /* calculate structure of monomer */
-      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o);
-      entropyDPT = safe_recalloc(entropyDPT, len1, len2, o);
-      initMatrix2();
-      fillMatrix2(a->maxLoop, o);
-      calc_terminal_bp(a->temp);
-      mh = HEND5(len1);
-      ms = SEND5(len1);
-      o->align_end_1 = (int) mh;
-      o->align_end_2 = (int) ms;
-      bp = (int*) safe_calloc(len1, sizeof(int), o);
-      for (k = 0; k < len1; ++k) bp[k] = 0;
-      if(isFinite(mh)) {
-        tracebacku(bp, a->maxLoop, o);
-        /* traceback for unimolecular structure */
-        o->sec_struct=drawHairpin(bp, mh, ms, mode,a->temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
-      } else if((mode != THL_FAST) && (mode != THL_DEBUG_F) && (mode != THL_STRUCT)) {
-        fputs("No secondary structure could be calculated\n",stderr);
-      }
-
-      if(o->temp==-_INFINITY && (!strcmp(o->msg, ""))) o->temp=0.0;
-      free(bp);
-      free(enthalpyDPT);
-      free(entropyDPT);
-      free(numSeq1);
-      free(numSeq2);
-      free(send5);
-      free(hend5);
-      free(oligo1);
-      free(oligo2);
-      return;
-   } else if(a->type!=4) { /* Hybridization of two moleculs */
-      len3 = len2;
-      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o); /* dyn. programming table for dS and dH */
-      entropyDPT = safe_recalloc(entropyDPT, len1, len2, o); /* enthalpyDPT is 3D array represented as 1D array */
-      initMatrix();
-      fillMatrix(a->maxLoop, o);
-      SH = (double*) safe_malloc(2 * sizeof(double), o);
-      /* calculate terminal basepairs */
-      bestI = bestJ = 0; 
-      G1 = bestG = _INFINITY;
-      if(a->type==1)
-        for (i = 1; i <= len1; i++) {
-           for (j = 1; j <= len2; j++) {
-              RSH(i, j, SH);
-              SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0 */
-              SH[1] = SH[1]+SMALL_NON_ZERO;
-              G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);  
-              if(G1<bestG){
-                 bestG = G1;
-                 bestI = i;
-                 bestJ = j;
-              }
-           }
-        }
-      int *ps1, *ps2;
-      ps1 = (int*) safe_calloc(len1, sizeof(int), o);
-      ps2 = (int*) safe_calloc(len2, sizeof(int), o);
-      for (i = 0; i < len1; ++i)
-        ps1[i] = 0;
-      for (j = 0; j < len2; ++j)
-        ps2[j] = 0;
-      if(a->type == 2 || a->type == 3)        {
-         /* THAL_END1 */
-         bestI = bestJ = 0;
-         bestI = len1;
-         i = len1;
-         G1 = bestG = _INFINITY;
-         for (j = 1; j <= len2; ++j) {
-            RSH(i, j, SH);
-            SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0,
-                                             that compiler could understand that SH is changed in this cycle */
-            SH[1] = SH[1]+SMALL_NON_ZERO;
-            G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);  
-                if(G1<bestG){
-                   bestG = G1;
-                         bestJ = j;
-            }
-         }
-      }
-      if (!isFinite(bestG)) bestI = bestJ = 1;
-      double dH, dS;
-      RSH(bestI, bestJ, SH);
-      dH = EnthalpyDPT(bestI, bestJ)+ SH[1] + dplx_init_H;
-      dS = (EntropyDPT(bestI, bestJ) + SH[0] + dplx_init_S);
-      /* tracebacking */
-      for (i = 0; i < len1; ++i)
-        ps1[i] = 0;
-      for (j = 0; j < len2; ++j)
-        ps2[j] = 0;
-      if(isFinite(EnthalpyDPT(bestI, bestJ))){
-         traceback(bestI, bestJ, RC, ps1, ps2, a->maxLoop, o);
-         o->sec_struct=drawDimer(ps1, ps2, SHleft, dH, dS, mode, a->temp, o);
-         o->align_end_1=bestI;
-         o->align_end_2=bestJ;
-      } else  {
-         o->temp = 0.0;
-         /* fputs("No secondary structure could be calculated\n",stderr); */
-      }
-      free(ps1);
-      free(ps2);
-      free(SH);
-      free(oligo2_rev);
-      free(enthalpyDPT);
-      free(entropyDPT);
-      free(numSeq1);
-      free(numSeq2);
-      free(oligo1);
-      return;
-   }
-   return;
-}
-/*** END thal() ***/
-
-/* Set default args */
-void
-CProgParam_ThAl::set_defaults( )
-{
-   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-   this->maxLoop  = MAX_LOOP;
-   this->mv       = 50; /* mM */
-   this->dv       = 0.0; /* mM */
-   this->dntp     = 0.8; /* mM */
-   this->dna_conc = 50; /* nM */
-   this->temp     = TEMP_KELVIN; /* Kelvin */
-   this->dimer    = 1; /* by default dimer structure is calculated */
-}
-
-/* Set default args for oligo */
-void
-CProgParam_ThAl::set_oligo_defaults( )
-{
-   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-   this->maxLoop  = MAX_LOOP;
-   this->mv       = 50; /* mM */
-   this->dv       = 0.0; /* mM */
-   this->dntp     = 0.0; /* mM the only difference !!!! */
-   this->dna_conc = 50; /* nM */
-   this->temp     = TEMP_KELVIN; /* Kelvin */
-   this->dimer    = 1; /* by default dimer structure is calculated */
 }
 
 
@@ -866,24 +533,20 @@ readLoop(std::istream& istr , double &v1, double &v2, double &v3 )
 static int
 readTLoop(std::istream& istr, std::string& s, double &v, int triloop )
 {
-    if (triloop)
-        s.reserve(5);                    /*triloop string has 5 characters*/
-    else
-        s.reserve(6);                    /*tetraloop string has 6 characters*/
+    if (triloop)    s.reserve(5);        /*triloop string has 5 characters*/
+    else            s.reserve(6);        /*tetraloop string has 6 characters*/
 
-  /* read the string */
-  istr >> s;
-
+  istr >> s;                            /* read the string */
   v = readDouble(istr);
-
   return 0;
 } 
 
 static void 
-getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], thal_parameters &tp)
+getStack(double stackEntropies [5][5][5][5],
+         double stackEnthalpies[5][5][5][5], thal_parameters &tp)
 {
-   tp.stack_ds->seekg(ios_base::beg);
-   tp.stack_dh->seekg(ios_base::beg);
+   tp.stack_ds->seekg(std::ios_base::beg);
+   tp.stack_dh->seekg(std::ios_base::beg);
    int i, j, ii, jj;
    for (i = 0; i < 5; ++i) {
       for (ii = 0; ii < 5; ++ii) {
@@ -907,11 +570,12 @@ getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], 
 }
 
 static void 
-getStackint2(double stackint2Entropies[5][5][5][5], double stackint2Enthalpies[5][5][5][5], const thal_parameters *tp )
+getStackint2(double stackint2Entropies [5][5][5][5],
+             double stackint2Enthalpies[5][5][5][5], const thal_parameters *tp )
 {
    int i, j, ii, jj;
-   tp->stackmm_ds->seekg(ios_base::beg);
-   tp->stackmm_dh->seekg(ios_base::beg);
+   tp->stackmm_ds->seekg(std::ios_base::beg);
+   tp->stackmm_dh->seekg(std::ios_base::beg);
    for (i = 0; i < 5; ++i) {
       for (ii = 0; ii < 5; ++ii) {
          for (j = 0; j < 5; ++j) {
@@ -959,8 +623,8 @@ getDangle(double dangleEntropies3 [5][5][5],
           double dangleEnthalpies5[5][5][5], const thal_parameters *tp )
 {
    int i, j, k;
-    tp->dangle_ds->seekg(ios_base::beg);
-    tp->dangle_dh->seekg(ios_base::beg);
+    tp->dangle_ds->seekg(std::ios_base::beg);
+    tp->dangle_dh->seekg(std::ios_base::beg);
    for (i = 0; i < 5; ++i)
      for (j = 0; j < 5; ++j)
        for (k = 0; k < 5; ++k) {
@@ -1015,7 +679,8 @@ getLoop(double hairpinLoopEntropies[30], double interiorLoopEntropies[30], doubl
 }
 
 static void 
-getTstack(double tstackEntropies[5][5][5][5], double tstackEnthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o)
+getTstack(double tstackEntropies[5][5][5][5],
+          double tstackEnthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o)
 {
    int i1, j1, i2, j2;
    char *pt_ds = tp->tstack_tm_inf_ds;
@@ -3086,4 +2751,319 @@ strcatc(char* str, char c)
    str[strlen(str) + 1] = 0;
    str[strlen(str)] = c;
 }
+
+/* Read the thermodynamic values (parameters) from the parameter files
+   in the directory specified by 'path'.  Return 0 on success and -1
+   on error. The thermodynamic values are stored in multiple static
+   variables. */
+int
+get_thermodynamic_values(const thal_parameters *tp, thal_results *o)
+{
+   if (setjmp(_jmp_buf) != 0) {
+      return -1;
+   }
+   getStack    ( stackEntropies,     stackEnthalpies,     tp, o);
+   /* verifyStackTable(stackEntropies, "entropy");
+      verifyStackTable(stackEnthalpies, "enthalpy"); */ /* this is for code debugging */
+   getStackint2( stackint2Entropies, stackint2Enthalpies, tp, o);
+   getDangle   ( dangleEntropies3,     dangleEnthalpies3,     dangleEntropies5,   dangleEnthalpies5, tp, o);
+   getLoop     ( hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
+                 interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
+   getTstack   ( tstackEntropies,     tstackEnthalpies, tp, o);
+   getTstack2  ( tstack2Entropies,    tstack2Enthalpies, tp, o);
+   getTriloop  (&triloopEntropies,   &triloopEnthalpies, &numTriloops, tp, o);
+   getTetraloop(&tetraloopEntropies, &tetraloopEnthalpies, &numTetraloops, tp, o);
+   /* getting the AT-penalties */
+   tableStartATS(AT_S, atpS);
+   tableStartATH(AT_H, atpH);
+
+   return 0;
+}
+
+/* Set default args */
+void
+CProgParam_ThAl::set_defaults( )
+{
+   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
+   this->maxLoop  = MAX_LOOP;
+   this->mv       = 50; /* mM */
+   this->dv       = 0.0; /* mM */
+   this->dntp     = 0.8; /* mM */
+   this->dna_conc = 50; /* nM */
+   this->temp     = TEMP_KELVIN; /* Kelvin */
+   this->dimer    = 1; /* by default dimer structure is calculated */
+}
+
+/* Set default args for oligo */
+void
+CProgParam_ThAl::set_oligo_defaults( )
+{
+   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
+   this->maxLoop  = MAX_LOOP;
+   this->mv       = 50; /* mM */
+   this->dv       = 0.0; /* mM */
+   this->dntp     = 0.0; /* mM the only difference !!!! */
+   this->dna_conc = 50; /* nM */
+   this->temp     = TEMP_KELVIN; /* Kelvin */
+   this->dimer    = 1; /* by default dimer structure is calculated */
+}
+
+
+/* central method: execute all sub-methods for calculating secondary
+   structure for dimer or for monomer */
+void
+thal(const unsigned char *oligo_f,
+     const unsigned char *oligo_r,
+     const thal_args *a,
+     const thal_mode mode,
+     thal_results *o)
+{
+   double* SH;
+   int i, j;
+   int len_f, len_r;
+   int k;
+   int *bp;
+   unsigned char *oligo2_rev = NULL;
+   double mh, ms;
+   double G1, bestG;
+
+   send5 = hend5 = NULL;
+   enthalpyDPT = entropyDPT = NULL;
+   numSeq1 = numSeq2 = NULL;
+   oligo1 = oligo2 = NULL;
+   strcpy(o->msg, "");
+   o->temp = THAL_ERROR_SCORE;
+   errno = 0;
+
+   if (setjmp(_jmp_buf) != 0) {
+      o->temp = THAL_ERROR_SCORE;
+      return;  /* If we get here, that means we returned via a
+                 longjmp.  In this case errno might be ENOMEM,
+                 but not necessarily. */
+   }
+
+   CHECK_ERROR(NULL == oligo_f, "NULL first sequence");
+   CHECK_ERROR(NULL == oligo_r, "NULL second sequence");
+   len_f = length_unsig_char(oligo_f);
+   len_r = length_unsig_char(oligo_r);
+
+   /*CHECK_ERROR(1==len_f, "Length 1 first sequence");
+   CHECK_ERROR(1==len_r, "Length 1 second sequence"); */
+   /* The following error messages will be seen by end users and will
+      not be easy to understand. */
+   CHECK_ERROR((len_f > THAL_MAX_ALIGN) && (len_r > THAL_MAX_ALIGN),
+               "Both sequences longer than " XSTR(THAL_MAX_ALIGN)
+                       " for thermodynamic alignment");
+   CHECK_ERROR((len_f > THAL_MAX_SEQ),
+               LONG_SEQ_ERR_STR(THAL_MAX_SEQ) " (1)");
+   CHECK_ERROR((len_r > THAL_MAX_SEQ),
+               LONG_SEQ_ERR_STR(THAL_MAX_SEQ) " (2)");
+
+   CHECK_ERROR(NULL == a,  "NULL 'in' pointer");
+   if (NULL == o) return; /* Leave it to the caller to crash */
+   CHECK_ERROR(a->type != thal_any
+               && a->type != thal_end1
+               && a->type != thal_end2
+               && a->type != thal_hairpin,
+               "Illegal type");
+   o->align_end_1 = -1;
+   o->align_end_2 = -1;
+   if (oligo_f && '\0' == *oligo_f) {
+      strcpy(o->msg, "Empty first sequence");
+      o->temp = 0.0;
+      return;
+   }
+   if (oligo_r && '\0' == *oligo_r) {
+      strcpy(o->msg, "Empty second sequence");
+      o->temp = 0.0;
+      return;
+   }
+   if (0 == len_f) {
+      o->temp = 0.0;
+      return;
+   }
+   if (0 == len_r) {
+      o->temp = 0.0;
+      return;
+   }
+   if(a->type!=3) {
+      oligo1 = (unsigned char*) safe_malloc((len_f + 1) * sizeof(unsigned char), o);
+      oligo2 = (unsigned char*) safe_malloc((len_r + 1) * sizeof(unsigned char), o);
+      strcpy((char*)oligo1,(const char*)oligo_f);
+      strcpy((char*)oligo2,(const char*)oligo_r);
+   } else  {
+      oligo1 = (unsigned char*) safe_malloc((len_r + 1) * sizeof(unsigned char), o);
+      oligo2 = (unsigned char*) safe_malloc((len_f + 1) * sizeof(unsigned char), o);
+      strcpy((char*)oligo1,(const char*)oligo_r);
+      strcpy((char*)oligo2,(const char*)oligo_f);
+   }
+   /*** INIT values for unimolecular and bimolecular structures ***/
+   if (a->type==4) { /* unimolecular folding */
+      len2 = length_unsig_char(oligo2);
+      len3 = len2 -1;
+      dplx_init_H = 0.0;
+      dplx_init_S = -0.00000000001;
+      RC=0;
+   } else if(a->type!=4) {
+      /* hybridization of two oligos */
+      dplx_init_H = 200;
+      dplx_init_S = -5.7;
+      if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2)) {
+         RC = R  * log(a->dna_conc/1000000000.0);
+      } else {
+         RC = R  * log(a->dna_conc/4000000000.0);
+      }
+      if(a->type!=3) {
+         oligo2_rev = (unsigned char*) safe_malloc((length_unsig_char(oligo_r) + 1) * sizeof(unsigned char), o);
+         strcpy((char*)oligo2_rev,(const char*)oligo_r);
+      } else {
+         oligo2_rev = (unsigned char*) safe_malloc((length_unsig_char(oligo_f) + 1) * sizeof(unsigned char), o);
+         strcpy((char*)oligo2_rev,(const char*)oligo_f);
+      }
+      reverse(oligo2_rev); /* REVERSE oligo2, so it goes to dpt 3'->5' direction */
+      free(oligo2);
+      oligo2=NULL;
+      oligo2=&oligo2_rev[0];
+   } else {
+      strcpy(o->msg, "Wrong alignment type!");
+      o->temp = THAL_ERROR_SCORE;
+      errno=0;
+#ifdef DEBUG
+      fprintf(stderr, o->msg);
+#endif
+      return;
+   }
+   len1 = length_unsig_char(oligo1);
+   len2 = length_unsig_char(oligo2);
+   /* convert nucleotides to numbers */
+   numSeq1 = (unsigned char*) safe_realloc(numSeq1, len1 + 2, o);
+   numSeq2 = (unsigned char*) safe_realloc(numSeq2, len2 + 2, o);
+
+   /*** Calc part of the salt correction ***/
+   saltCorrection=saltCorrectS(a->mv,a->dv,a->dntp); /* salt correction for entropy, must be multiplied with N, which is
+                                                   the total number of phosphates in the duplex divided by 2; 8bp dplx N=7 */
+
+   if(a->type == 4){ /* monomer */
+      /* terminal basepairs */
+      send5 = (double*) safe_realloc(send5, (len1 + 1) * sizeof(double), o);
+      hend5 = (double*) safe_realloc(hend5, (len1 + 1) * sizeof(double), o);
+   }
+   for(i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
+   for(i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
+   for(i = 1; i <= len1; ++i) numSeq1[i] = str2int(oligo1[i - 1]);
+   for(i = 1; i <= len2; ++i) numSeq2[i] = str2int(oligo2[i - 1]);
+   numSeq1[0] = numSeq1[len1 + 1] = numSeq2[0] = numSeq2[len2 + 1] = 4; /* mark as N-s */
+   if (a->type==4) { /* calculate structure of monomer */
+      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o);
+      entropyDPT = safe_recalloc(entropyDPT, len1, len2, o);
+      initMatrix2();
+      fillMatrix2(a->maxLoop, o);
+      calc_terminal_bp(a->temp);
+      mh = HEND5(len1);
+      ms = SEND5(len1);
+      o->align_end_1 = (int) mh;
+      o->align_end_2 = (int) ms;
+      bp = (int*) safe_calloc(len1, sizeof(int), o);
+      for (k = 0; k < len1; ++k) bp[k] = 0;
+      if(isFinite(mh)) {
+         tracebacku(bp, a->maxLoop, o);
+         /* traceback for unimolecular structure */
+         o->sec_struct=drawHairpin(bp, mh, ms, mode,a->temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
+      } else if((mode != THL_FAST) && (mode != THL_DEBUG_F) && (mode != THL_STRUCT)) {
+         fputs("No secondary structure could be calculated\n",stderr);
+      }
+
+      if(o->temp==-_INFINITY && (!strcmp(o->msg, ""))) o->temp=0.0;
+      free(bp);
+      free(enthalpyDPT);
+      free(entropyDPT);
+      free(numSeq1);
+      free(numSeq2);
+      free(send5);
+      free(hend5);
+      free(oligo1);
+      free(oligo2);
+      return;
+   } else if(a->type!=4) { /* Hybridization of two moleculs */
+      len3 = len2;
+      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o); /* dyn. programming table for dS and dH */
+      entropyDPT = safe_recalloc(entropyDPT, len1, len2, o); /* enthalpyDPT is 3D array represented as 1D array */
+      initMatrix();
+      fillMatrix(a->maxLoop, o);
+      SH = (double*) safe_malloc(2 * sizeof(double), o);
+      /* calculate terminal basepairs */
+      bestI = bestJ = 0;
+      G1 = bestG = _INFINITY;
+      if(a->type==1)
+         for (i = 1; i <= len1; i++) {
+            for (j = 1; j <= len2; j++) {
+               RSH(i, j, SH);
+               SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0 */
+               SH[1] = SH[1]+SMALL_NON_ZERO;
+               G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);
+               if(G1<bestG){
+                  bestG = G1;
+                  bestI = i;
+                  bestJ = j;
+               }
+            }
+         }
+      int *ps1, *ps2;
+      ps1 = (int*) safe_calloc(len1, sizeof(int), o);
+      ps2 = (int*) safe_calloc(len2, sizeof(int), o);
+      for (i = 0; i < len1; ++i)
+         ps1[i] = 0;
+      for (j = 0; j < len2; ++j)
+         ps2[j] = 0;
+      if(a->type == 2 || a->type == 3)        {
+         /* THAL_END1 */
+         bestI = bestJ = 0;
+         bestI = len1;
+         i = len1;
+         G1 = bestG = _INFINITY;
+         for (j = 1; j <= len2; ++j) {
+            RSH(i, j, SH);
+            SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0,
+                                             that compiler could understand that SH is changed in this cycle */
+            SH[1] = SH[1]+SMALL_NON_ZERO;
+            G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);
+            if(G1<bestG){
+               bestG = G1;
+               bestJ = j;
+            }
+         }
+      }
+      if (!isFinite(bestG)) bestI = bestJ = 1;
+      double dH, dS;
+      RSH(bestI, bestJ, SH);
+      dH = EnthalpyDPT(bestI, bestJ)+ SH[1] + dplx_init_H;
+      dS = (EntropyDPT(bestI, bestJ) + SH[0] + dplx_init_S);
+      /* tracebacking */
+      for (i = 0; i < len1; ++i)
+         ps1[i] = 0;
+      for (j = 0; j < len2; ++j)
+         ps2[j] = 0;
+      if(isFinite(EnthalpyDPT(bestI, bestJ))){
+         traceback(bestI, bestJ, RC, ps1, ps2, a->maxLoop, o);
+         o->sec_struct=drawDimer(ps1, ps2, SHleft, dH, dS, mode, a->temp, o);
+         o->align_end_1=bestI;
+         o->align_end_2=bestJ;
+      } else  {
+         o->temp = 0.0;
+         /* fputs("No secondary structure could be calculated\n",stderr); */
+      }
+      free(ps1);
+      free(ps2);
+      free(SH);
+      free(oligo2_rev);
+      free(enthalpyDPT);
+      free(entropyDPT);
+      free(numSeq1);
+      free(numSeq2);
+      free(oligo1);
+      return;
+   }
+   return;
+}
+/*** END thal() ***/
 
