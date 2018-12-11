@@ -843,46 +843,23 @@ saltCorrectS (double mv, double dv, double dntp)
 double
 readDouble(std::istream& istr )
 {
-  str::string line;
-  std::getline(istr,line) ;
+  str::string nmb;
+  istr >> nmb ;
 
-  if (line == "inf") return _INFINITY;
-  return std::stod(line);
+  if (nmb == "inf") return _INFINITY;
+  return std::stod(nmb);
 }
 
-/* Reads a line containing 4 doubles, which can be specified as "inf". */
+/* Reads a line containing 3 doubles, which can be specified as "inf". */
 static void
-readLoop(char **str, double *v1, double *v2, double *v3, thal_results *o)
+readLoop(std::istream& istr , double &v1, double &v2, double &v3 )
 {
-  char *line = th_read_str_line(str, o);
-  char *p = line, *q;
-  /* skip first number on the line */
-  while (isspace(*p)) p++;
-  while (isdigit(*p)) p++;
-  while (isspace(*p)) p++;
-  /* read second number */
-  q = p;
-  while (!isspace(*q)) q++;
-  *q = '\0'; q++;
-  if (!strcmp(p, "inf")) *v1 = _INFINITY;
-  else sscanf(p, "%lf", v1);
-  while (isspace(*q)) q++;
-  /* read third number */
-  p = q;
-  while (!isspace(*p)) p++;
-  *p = '\0'; p++;
-  if (!strcmp(q, "inf")) *v2 = _INFINITY;
-  else sscanf(q, "%lf", v2);
-  while (isspace(*p)) p++;
-  /* read last number */
-  q = p;
-  while (!isspace(*q) && (*q != '\0')) q++;
-  *q = '\0';
-  if (!strcmp(p, "inf")) *v3 = _INFINITY;
-  else sscanf(p, "%lf", v3);
-  if (line != NULL) {
-    free(line);
-  }
+  int n;         /* skip first number on the line */
+  istr >> n ;
+
+  v1 = readDouble(istr);
+  v2 = readDouble(istr);
+  v3 = readDouble(istr);
 }
 
 /* Reads a line containing a short string and a double, used for reading a triloop or tetraloop. */
