@@ -102,36 +102,24 @@ struct thal_parameters {
     char *tstack2_ds;
 } ;
 
-/* BEGIN TYPEDEFs */
-enum class ThAl_type {Any, end1, end2, Hairpin };
+constexpr int  MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
+constexpr double TEMP_KELVIN = 310.15;
 
 
-/* Structure for passing arguments to THermodynamic ALignment calculation */
-
+/// Structure for passing arguments to THermodynamic ALignment calculation
 class CProgParam_ThAl
 {
  public:
-   enum class type {Any, end1, end2, Hairpin };
+   enum class type {Any =1, end1, end2, Hairpin };
 
-   type         type;     /* 1 = Any, (by default)*/
-   int          maxLoop;  /* maximum size of loop to consider; longer than 30 bp are not allowed */
-   double       mv;       /* concentration of monovalent cations */
-   double       dv;       /* concentration of divalent cations */
-   double       dntp;     /* concentration of dNTP-s */
-   double       dna_conc; /* concentration of oligonucleotides */
-   double       temp;     /* temperature from which hairpin structures will be calculated */
-   int          dimer;    /* if non zero, dimer structure is calculated */
-
-/* Structure for receiving results from the thermodynamic alignment calculation */
-     class Results
-     {
-         public:
-         std::string  msg;
-         double       temp;
-         int          align_end_1;
-         int          align_end_2;
-         char        *sec_struct;
-     } res;
+   type         type = type::Any;  ///< 1 = Any, (by default)
+   int          maxLoop{MAX_LOOP}; ///< maximum size of loop to consider; longer than 30 bp are not allowed
+   double       mv   = 50;         ///< mM, concentration of monovalent cations
+   double       dv   = 0.0;        ///< mM, cconcentration of divalent cations
+   double       dntp = 0.8;        ///< mM, cconcentration of dNTP-s
+   double       dna_conc = 50;     ///< nM, cconcentration of oligonucleotides
+   double       temp = TEMP_KELVIN;///< Kelvin, ctemperature from which hairpin structures will be calculated
+   int          dimer = 1;         ///< if non zero, dimer structure is calculated
 
     enum class mode {
         FAST    = 0, //<  = 0 - score only with optimized functions (fast)
@@ -141,11 +129,10 @@ class CProgParam_ThAl
         STRUCT  = 4  //< = 4 - calculate secondary structures as string
     };
 
-    CProgParam_ThAl (){set_thal_default_args(this);}   //??
-        void set_thal_default_args      (CProgParam_ThAl *a);
-        void set_thal_oligo_default_args(CProgParam_ThAl *a);
+    CProgParam_ThAl () = default ;
 
-    int  thal_set_null_parameters(thal_parameters *a);
+    void set_defaults      ( );
+    void set_oligo_defaults( );
 
     int load(const std::filesystem::path& pth ){};
     // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
@@ -156,6 +143,29 @@ class CProgParam_ThAl
     int  get_thermodynamic_values(const thal_parameters *tp);
 
 } ;
+
+/* Structure for receiving results from the thermodynamic alignment calculation */
+class Results
+{
+public:
+    std::string  msg;
+    double       temp;
+    int          align_end_1;
+    int          align_end_2;
+    char        *sec_struct= nullptr;
+} ;
+
+using seq = std::basic_string<unsigned char> ;
+
+///  Central method for finding the best alignment.  On error, o->temp
+///    is set to THAL_ERROR_SCORE and a message is put in o->msg.  The
+///    error might be caused by ENOMEM. To determine this it is necessary
+///    to check errno.
+void thal( const seq& oligo1,
+           const seq& oligo2,
+           CProgParam_ThAl *a,
+           const CProgParam_ThAl::mode mode);
+
 
 /* Read the thermodynamic values (parameters) from the parameter files
    in the directory specified by 'path'.  Return 0 on success and -1
@@ -170,15 +180,9 @@ class CProgParam_ThAl
   }
 #endif
 
-/* Central method for finding the best alignment.  On error, o->temp
-   is set to THAL_ERROR_SCORE and a message is put in o->msg.  The
-   error might be caused by ENOMEM. To determine this it is necessary
-   to check errno.
-*/
-using seq = std::basic_string<unsigned char> ;
-void thal( const seq& oligo1,
-           const seq& oligo2,
-           CProgParam_ThAl *a,
-           const thal_mode mode);
+int  get_thermodynamic_values(const thal_parameters *tp);
+int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
+
+
 
 #endif

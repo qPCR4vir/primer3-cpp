@@ -108,13 +108,13 @@
 
 /*** BEGIN CONSTANTS ***/
 # ifdef INTEGER
-const double _INFINITY = 999999.0;
+    const double _INFINITY = 999999.0;
 # else
-# ifdef INFINITY
-const double _INFINITY = INFINITY;
-# else
-const double _INFINITY = 1.0 / 0.0;
-# endif
+#   ifdef INFINITY
+       const double _INFINITY = INFINITY;
+#   else
+       const double _INFINITY = 1.0 / 0.0;
+#   endif
 # endif
 
 static const double R    = 1.9872; /* cal/Kmol */
@@ -126,8 +126,6 @@ static const double MinEntropyCutoff = -2500.0; /* to filter out non-existing en
 static const double MinEntropy = -3224.0; /* initiation */
 static const double G2   = 0.0; /* structures w higher G are considered to be unstabile */
        const double ABSOLUTE_ZERO = 273.15;
-       const double TEMP_KELVIN = 310.15;
-       const int    MAX_LOOP = 30; /* the maximum size of loop that can be calculated; for larger loops formula must be implemented */
        const int    MIN_LOOP = 0;
 //static const char BASES[5] = {'A', 'C', 'G', 'T', 'N'}; /* bases to be considered - N is every symbol that is not A, G, C,$
 //                                                  */
@@ -640,33 +638,31 @@ thal(const unsigned char *oligo_f,
 /*** END thal() ***/
 
 /* Set default args */
-void 
-set_thal_default_args(thal_args *a)
+void
+CProgParam_ThAl::set_defaults( )
 {
-   memset(a, 0, sizeof(*a));
-   a->type = thal_any; /* thal_alignment_type THAL_ANY */
-   a->maxLoop = MAX_LOOP;
-   a->mv = 50; /* mM */
-   a->dv = 0.0; /* mM */
-   a->dntp = 0.8; /* mM */
-   a->dna_conc = 50; /* nM */
-   a->temp = TEMP_KELVIN; /* Kelvin */
-   a->dimer = 1; /* by default dimer structure is calculated */
+   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
+   this->maxLoop  = MAX_LOOP;
+   this->mv       = 50; /* mM */
+   this->dv       = 0.0; /* mM */
+   this->dntp     = 0.8; /* mM */
+   this->dna_conc = 50; /* nM */
+   this->temp     = TEMP_KELVIN; /* Kelvin */
+   this->dimer    = 1; /* by default dimer structure is calculated */
 }
 
 /* Set default args for oligo */
 void
-set_thal_oligo_default_args(thal_args *a)    
+CProgParam_ThAl::set_oligo_defaults( )
 {
-   memset(a, 0, sizeof(*a));
-   a->type = thal_any; /* thal_alignment_type THAL_ANY */
-   a->maxLoop = MAX_LOOP;
-   a->mv = 50; /* mM */
-   a->dv = 0.0; /* mM */
-   a->dntp = 0.0; /* mM */
-   a->dna_conc = 50; /* nM */
-   a->temp = TEMP_KELVIN; /* Kelvin */
-   a->dimer = 1; /* by default dimer structure is calculated */
+   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
+   this->maxLoop  = MAX_LOOP;
+   this->mv       = 50; /* mM */
+   this->dv       = 0.0; /* mM */
+   this->dntp     = 0.0; /* mM the only difference !!!! */
+   this->dna_conc = 50; /* nM */
+   this->temp     = TEMP_KELVIN; /* Kelvin */
+   this->dimer    = 1; /* by default dimer structure is calculated */
 }
 
 
