@@ -38,6 +38,14 @@ set(LIBMASKER       libmasker.a)
 set(LIBMASKER_DYN   libmasker.a.so.1.0.0)
 
 
+#add_library(dpal src/dpal.c src/dpal.h)
+add_library(thal)
+set_property( TARGET thal PROPERTY CXX_STANDARD 14 )
+target_link_libraries(thal PUBLIC "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+target_sources(thal PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src/thal.c ${CMAKE_CURRENT_LIST_DIR}/src/thal.h)
+
+include(${CMAKE_CURRENT_LIST_DIR}/select_filesystem.cmake)
+
 set(EXES     ${PRIMER_EXE}
              ${NTDPAL_EXE} 
              ${NTTHAL_EXE}
@@ -65,7 +73,7 @@ add_executable(${PRIMER_EXE}
 
 set_property( TARGET ${PRIMER_EXE} PROPERTY CXX_STANDARD 14 )
 target_include_directories(${PRIMER_EXE} PUBLIC src)
-target_link_libraries(${PRIMER_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+target_link_libraries(${PRIMER_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" thal)
 install(TARGETS ${PRIMER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
 
 

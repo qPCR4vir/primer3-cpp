@@ -43,6 +43,7 @@
 #include <string>
 #include <filesystem>
 
+#include "filesystem.hpp"
 
 #ifndef THAL_ERROR_SCORE
 # define THAL_ERROR_SCORE -_INFINITY
