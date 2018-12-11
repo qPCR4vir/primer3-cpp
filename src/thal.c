@@ -830,67 +830,15 @@ saltCorrectS (double mv, double dv, double dntp)
    return 0.368*((log((mv+120*(sqrt(fmax(0.0, dv-dntp))))/1000)));
 }
 
-static char*
-th_read_str_line(char **str, thal_results* o)
-{
-  if (*str == NULL) {
-    return NULL;
-  }
-  char *ptr = *str;
-  char *ini = *str;
-  while(1) {
-    if ((*ptr == '\n') || (*ptr == '\0')) {
-      char *ret = NULL;
-      if (!(ret = malloc(sizeof(char) * (ptr - ini + 1)))) {
-#ifdef DEBUG
-        fputs("Error in malloc()\n", stderr);
-#endif
-        THAL_OOM_ERROR;
-      }
-      /* copy line */
-      strncpy(ret, ini, (ptr - ini + 1));
-      ret[ptr - ini] = '\0';
-
-      if (*ptr == '\0') { /* End of String */
-        *str = NULL;
-      } else {
-        ptr++;
-        if (*ptr == '\0') { /* End of String */
-          *str = NULL;
-        } else {
-          *str = ptr;
-        }
-      }
-      if (ptr == ini) {
-        if (ret != NULL) {
-          free(ret);
-	}
-        return NULL;
-      } else {  
-        return ret;
-      }
-    }
-    ptr++;
-  }
-}
-
 /* These functions are needed as "inf" cannot be read on Windows directly */
-static double 
-readDouble(char **str, thal_results* o)
+double
+readDouble(std::istream& istr )
 {
-  double result;
-  char *line = th_read_str_line(str, o);
-  /* skip any spaces at beginning of the line */
-  while (isspace(*line)) line++;
-  if (!strncmp(line, "inf", 3)) {
-    free(line);
-    return _INFINITY;
-  }
-  sscanf(line, "%lf", &result);
-  if (line != NULL) {
-    free(line);
-  }
-  return result;
+  str::string line;
+  std::getline(istr,line) ;
+
+  if (line == "inf") return _INFINITY;
+  return std::stod(line);
 }
 
 /* Reads a line containing 4 doubles, which can be specified as "inf". */
@@ -962,11 +910,9 @@ readTLoop(char **str, char *s, double *v, int triloop, thal_results *o)
 } 
 
 static void 
-getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o)
+getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], thal_parameters &tp)
 {
    int i, j, ii, jj;
-   char *pt_ds = tp->stack_ds;
-   char *pt_dh = tp->stack_dh;
    for (i = 0; i < 5; ++i) {
       for (ii = 0; ii < 5; ++ii) {
          for (j = 0; j < 5; ++j) {
@@ -975,8 +921,8 @@ getStack(double stackEntropies[5][5][5][5], double stackEnthalpies[5][5][5][5], 
                   stackEntropies[i][ii][j][jj] = -1.0;
                   stackEnthalpies[i][ii][j][jj] = _INFINITY;
                } else {
-                  stackEntropies[i][ii][j][jj] = readDouble(&pt_ds, o);
-                  stackEnthalpies[i][ii][j][jj] = readDouble(&pt_dh, o);
+                  stackEntropies [i][ii][j][jj] = readDouble(*tp.stack_ds );
+                  stackEnthalpies[i][ii][j][jj] = readDouble(*tp.stack_dh);
                   if (!isFinite(stackEntropies[i][ii][j][jj]) || !isFinite(stackEnthalpies[i][ii][j][jj])) {
                      stackEntropies[i][ii][j][jj] = -1.0;
                      stackEnthalpies[i][ii][j][jj] = _INFINITY;
