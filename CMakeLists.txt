@@ -67,11 +67,8 @@ install(TARGETS ${PRIMER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bi
 
 
 add_executable(${NTDPAL_EXE}
-
         src/ntdpal_main.cc
-
         src/dpal.c
-
         )
 
 set_property( TARGET ${NTDPAL_EXE} PROPERTY CXX_STANDARD 14 )
@@ -79,3 +76,51 @@ target_include_directories(${NTDPAL_EXE} PUBLIC src)
 target_link_libraries(${NTDPAL_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
 install(TARGETS ${NTDPAL_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
 
+
+add_executable(${NTTHAL_EXE}
+        src/thal_main.c
+        src/thal.c
+        )
+
+set_property( TARGET ${NTTHAL_EXE} PROPERTY CXX_STANDARD 14 )
+target_include_directories(${NTTHAL_EXE} PUBLIC src)
+target_link_libraries(${NTTHAL_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+install(TARGETS ${NTTHAL_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
+
+
+add_executable(${OLIGOTM_EXE}
+        src/oligotm_main.c
+        src/oligotm.c
+        )
+
+set_property( TARGET ${OLIGOTM_EXE} PROPERTY CXX_STANDARD 14 )
+target_include_directories(${OLIGOTM_EXE} PUBLIC src)
+target_link_libraries(${OLIGOTM_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+install(TARGETS ${OLIGOTM_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
+
+add_executable(${LONG_SEQ_EXE}
+        src/long_seq_tm_test_main.c
+        src/oligotm.c
+        )
+
+set_property( TARGET ${LONG_SEQ_EXE} PROPERTY CXX_STANDARD 14 )
+target_include_directories(${LONG_SEQ_EXE} PUBLIC src)
+target_link_libraries(${LONG_SEQ_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+install(TARGETS ${LONG_SEQ_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
+
+add_executable(${MASKER_EXE}
+        src/masker_main.c
+
+        src/libprimer3.cc
+        src/p3_seq_lib.c
+        src/dpal.c
+        src/thal.c
+        src/oligotm.c
+        src/masker.cc
+        src/mman.c
+        )
+
+set_property( TARGET ${MASKER_EXE} PROPERTY CXX_STANDARD 14 )
+target_include_directories(${MASKER_EXE} PUBLIC src)
+target_link_libraries(${MASKER_EXE} "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm -ffloat-store" )
+install(TARGETS ${MASKER_EXE} RUNTIME DESTINATION "C:/Prog/ExtLib/primer3-ori/bin")
