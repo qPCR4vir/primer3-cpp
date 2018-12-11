@@ -784,11 +784,19 @@ readParamFile(const std::filesystem::path& dirname,
 }
 
 #include <strstream>
-#include "primer3_config/stack.dh.h"
+#include "primer3_config/stack.dh.hpp"
 
 int thal_parameters::set_defaults( )
 {
-   this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->dangle_dh = std::make_unique<std::istrstream>(dangle_dh_data);
+    this->dangle_ds = std::make_unique<std::istrstream>(dangle_ds_data);
+    this->loops_dh  = std::make_unique<std::istrstream>(loops_dh_data );
+    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
+    this->stack_dh = std::make_unique<std::istrstream>(stack_dh_data);
 }
 
 int

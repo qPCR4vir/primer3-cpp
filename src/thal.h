@@ -80,30 +80,35 @@ extern const double ABSOLUTE_ZERO;
 extern const int MAX_LOOP; /* the maximum size of loop that can be calculated;
                               for larger loops formula must be implemented */
 extern const int MIN_LOOP;
+constexpr int  MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
+constexpr double TEMP_KELVIN = 310.15;
+
 
 /*** END CONSTANTS ***/
 
-using upis=std::unique_ptr<std::istream>;
 
-/* The files from the directory primer3_config loaded as istrings.
-   The actual parameters are static-global values in thal.c*/
-struct thal_parameters {
+/// The files from the directory primer3_config loaded as istrings.
+///   The actual parameters are static-global values in thal.c
+struct thal_parameters
+ {
+    using upis=std::unique_ptr<std::istream>;
+
     upis dangle_dh;
     upis dangle_ds;
-    std::istream loops_dh;
-    std::istream loops_ds;
+    upis loops_dh;
+    upis loops_ds;
     upis stack_dh;
-    std::istream stack_ds;
-    std::istream stackmm_dh;
-    std::istream stackmm_ds;
-    std::istream tetraloop_dh;
-    std::istream tetraloop_ds;
-    std::istream triloop_dh;
-    std::istream triloop_ds;
-    std::istream tstack_tm_inf_ds;
-    std::istream tstack_dh;
-    std::istream tstack2_dh;
-    std::istream tstack2_ds;
+    upis stack_ds;
+    upis stackmm_dh;
+    upis stackmm_ds;
+    upis tetraloop_dh;
+    upis tetraloop_ds;
+    upis triloop_dh;
+    upis triloop_ds;
+    upis tstack_tm_inf_ds;
+    upis tstack_dh;
+    upis tstack2_dh;
+    upis tstack2_ds;
 
     int set_defaults( );
     // int set_default_thal_parameters(thal_parameters *a);
@@ -112,9 +117,6 @@ struct thal_parameters {
 
     int  parse_thermodynamic_values( );
 } ;
-
-constexpr int  MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
-constexpr double TEMP_KELVIN = 310.15;
 
 
 /// Structure for passing arguments to THermodynamic ALignment calculation
