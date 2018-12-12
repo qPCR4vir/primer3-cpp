@@ -182,14 +182,9 @@ static double saltCorrectS (double mv, double dv, double dntp); /* part of calcu
 
 /*static void verifyStackTable(double stack[5][5][5][5], char* type);*/ /* just for debugging; the method is turned off by default */
 
-static void getTstack2(double tstack2Entropies[5][5][5][5], double tstack2Enthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o);
-
 static void getTriloop(struct triloop**, struct triloop**, int* num, const thal_parameters *tp, thal_results* o);
 
 static void getTetraloop(struct tetraloop**, struct tetraloop**, int* num, const thal_parameters *tp, thal_results* o);
-
-static void getLoop(double hairpinLoopEnntropies[30], double interiorLoopEntropies[30], double bulgeLoopEntropiess[30],
-             double hairpinLoopEnthalpies[30], double interiorLoopEnthalpies[30], double bulgeLoopEnthalpies[30], const thal_parameters *tp, thal_results* o);
 
 static void tableStartATS(double atp_value, double atp[5][5]); /* creates table of entropy values for nucleotides
                                                                   to which AT-penlty must be applied */
@@ -276,14 +271,6 @@ static double Sd3(int,int); /* returns thermodynamic value (S) for 3' dangling e
 static double Ststack(int,int); /* returns entropy value for terminal stack */
 static double Htstack(int,int); /* returns enthalpy value for terminal stack */
 
-/* memory stuff */
-static void* safe_calloc(size_t, size_t, thal_results* o);
-static void* safe_malloc(size_t, thal_results* o);
-static void* safe_realloc(void*, size_t, thal_results* o);
-static double* safe_recalloc(double* ptr, int m, int n, thal_results* o);
-
-static int numTriloops; /* hairpin triloop penalties */
-static int numTetraloops; /* hairpin tetraloop penalties */
 static double atpS[5][5]; /* AT penalty */
 static double atpH[5][5]; /* AT penalty */
 static double *send5, *hend5; /* calc 5'  */
@@ -298,7 +285,7 @@ static double* enthalpyDPT; /* matrix for values of enthalpy */
 static double* entropyDPT; /* matrix for values of entropy */
 static unsigned char *oligo1, *oligo2; /* inserted oligo sequenced */
 static unsigned char *numSeq1, *numSeq2; /* same as oligo1 and oligo2 but converted to numbers */
-static int len1, len2, len3; /* length of sequense 1 and 2 *//* 17.02.2009 int temponly;*/ /* print only temperature of the predicted structure */
+static int    len1, len2, len3; /* length of sequense 1 and 2 *//* 17.02.2009 int temponly;*/ /* print only temperature of the predicted structure */
 static double dangleEntropies3[5][5][5]; /* thermodynamic paramteres for 3' dangling ends */
 static double dangleEnthalpies3[5][5][5]; /* ther params for 3' dangling ends */
 static double dangleEntropies5[5][5][5];  /* ther params for 5' dangling ends */
