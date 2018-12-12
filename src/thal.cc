@@ -175,8 +175,6 @@ struct tracer /* structure for tracebacku - unimolecular str */ {
 
 static int length_unsig_char(const unsigned char * str); /* returns length of unsigned char; to avoid warnings while compiling */
 
-static unsigned char str2int(char c); /* converts DNA sequence to int; 0-A, 1-C, 2-G, 3-T, 4-whatever */
-
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
                                                                    for Tm by SantaLucia et al */
 
@@ -308,19 +306,15 @@ loop_prmtr triloopEntropies,     /* therm penalties for given triloop   seq-s */
 static jmp_buf _jmp_buf;
 
 static unsigned char
-str2int(char c)
+str2int(char c)          ///< converts DNA sequence to int (unsigned char) code; 0-A, 1-C, 2-G, 3-T, 4-whatever
 {
    switch (c) {
-    case 'A': case '0':
-      return 0;
-    case 'C': case '1':
-      return 1;
-    case 'G': case '2':
-      return 2;
-    case 'T': case '3':
-      return 3;
+    case 'A': case '0':       return 0;
+    case 'C': case '1':       return 1;
+    case 'G': case '2':       return 2;
+    case 'T': case '3':       return 3;
    }
-   return 4;
+                              return 4;
 }
 
 /* memory stuff */
@@ -373,10 +367,16 @@ safe_realloc(void* ptr, size_t n, thal_results *o)
 static int 
 max5(double a, double b, double c, double d, double e)
 {
-   if(a > b && a > c && a > d && a > e) return 1;
-   else if(b > c && b > d && b > e) return 2;
-   else if(c > d && c > e) return 3;
-   else if(d > e) return 4;
+        if(a > b &&
+           a > c &&
+           a > d &&
+           a > e    ) return 1;
+   else if(b > c &&
+           b > d &&
+           b > e    ) return 2;
+   else if(c > d &&
+           c > e    ) return 3;
+   else if(d > e    ) return 4;
    else return 5;
 }
 
@@ -420,6 +420,7 @@ readParamFile(const std::filesystem::path& dirname,
    auto r = std::make_unique<std::strstream>();
    (*r) << fi.rdbuf();   // this will eats the new-lines ??    //upis res= std::move(r);
    // see https://en.cppreference.com/w/cpp/io/basic_ostream/operator_ltlt
+   // http://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
    return r;
 }
 
@@ -557,26 +558,7 @@ getStackint2(double stackint2Entropies [5][5][5][5],
    }
 }
 
-/*
-static void 
-verifyStackTable(double stack[5][5][5][5], char* type)
-{
-
-   int i, j, ii, jj;
-   for (i = 0; i < 4; ++i)
-     for (j = 0; j < 4; ++j)
-       for (ii = 0; ii < 4; ++ii)
-         for (jj = 0; jj < 4; ++jj)
-           if (stack[i][j][ii][jj] != stack[jj][ii][j][i])
-#ifdef DEBUG
-             fprintf(stderr, "Warning: symmetrical stacks _are_ _not_ equal: %c-%c/%c-%c stack %s is %g; %c-%c/%c-%c stack %s is %g\n",
-#endif
-                     BASES[i], BASES[j], BASES[ii], BASES[jj], type, stack[i][j][ii][jj], BASES[jj],
-                     BASES[ii], BASES[j], BASES[i], type, stack[jj][ii][j][i]);
-}
-*/
-
-static void 
+static void
 getDangle(double dangleEntropies3 [5][5][5],
           double dangleEnthalpies3[5][5][5],
           double dangleEntropies5 [5][5][5],
@@ -633,8 +615,12 @@ getLoop(double hairpinLoopEntropies[30], double interiorLoopEntropies[30], doubl
    tp->loops_ds->seekg(std::ios_base::beg);
    tp->loops_dh->seekg(std::ios_base::beg);
    for (k = 0; k < 30; ++k) {
-      readLoop(*tp->loops_ds, &interiorLoopEntropies[k], &bulgeLoopEntropies[k], &hairpinLoopEntropies[k]);
-      readLoop(*tp->loops_ds, &interiorLoopEnthalpies[k], &bulgeLoopEnthalpies[k], &hairpinLoopEnthalpies[k]);
+      readLoop(*tp->loops_ds, &interiorLoopEntropies[k],
+                              &bulgeLoopEntropies   [k],
+                              &hairpinLoopEntropies [k]);
+      readLoop(*tp->loops_ds, &interiorLoopEnthalpies[k],
+                              &bulgeLoopEnthalpies   [k],
+                              &hairpinLoopEnthalpies [k]);
    }
 }
 
