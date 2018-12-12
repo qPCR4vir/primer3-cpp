@@ -258,11 +258,15 @@ static double saltCorrection; /* value calculated by saltCorrectS, includes corr
 static double RC; /* universal gas constant multiplied w DNA conc - for melting temperature */
 static double SHleft; /* var that helps to find str w highest melting temperature */
 static int bestI, bestJ; /* starting position of most stable str */
+
 static double* enthalpyDPT; /* matrix for values of enthalpy */
 static double* entropyDPT; /* matrix for values of entropy */
-static unsigned char *oligo1, *oligo2; /* inserted oligo sequenced */
-static unsigned char *numSeq1, *numSeq2; /* same as oligo1 and oligo2 but converted to numbers */
-static int    len1, len2, len3; /* length of sequense 1 and 2 *//* 17.02.2009 int temponly;*/ /* print only temperature of the predicted structure */
+
+seq            oligo1,  oligo2;   /* inserted oligo sequenced */
+seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
+static int    len1, len2, len3;   /* length of sequense 1 and 2 */
+                                  /* 17.02.2009 int temponly;*/ /* print only temperature of the predicted structure */
+
 static double dangleEntropies3[5][5][5]; /* thermodynamic paramteres for 3' dangling ends */
 static double dangleEnthalpies3[5][5][5]; /* ther params for 3' dangling ends */
 static double dangleEntropies5[5][5][5];  /* ther params for 5' dangling ends */
@@ -1916,15 +1920,15 @@ Htstack(int i, int j)
    return tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
 }
 
-/* Return 1 if string is symmetrical, 0 otherwise. */
+/* Return 1 if string is symmetrical, 0 otherwise. Used only once only in thal. TODO change to use code and BPI[]*/
 static int 
 symmetry_thermo(const unsigned char* seq)
 {
-   register char s;
-   register char e;
+   char s;
+   char e;
    const unsigned char *seq_end=seq;
    int i = 0;
-   int seq_len=length_unsig_char(seq);
+   int seq_len=length_unsig_char(seq);    // and this
    int mp = seq_len/2;
    if(seq_len%2==1) {
       return 0;
@@ -1933,15 +1937,15 @@ symmetry_thermo(const unsigned char* seq)
    seq_end--;
    while(i<mp) {
       i++;
-      s=toupper(*seq);
+      s=toupper(*seq);                  //  to avoid this
       e=toupper(*seq_end);
-      if ((s=='A' && e!='T')
+      if (   (s=='A' && e!='T')
           || (s=='T' && e!='A')
           || (e=='A' && s!='T')
           || (e=='T' && s!='A')) {
          return 0;
       }
-      if ((s=='C' && e!='G')
+      if (   (s=='C' && e!='G')
           || (s=='G' && e!='C')
           || (e=='C' && s!='G')
           || (e=='G' && s!='C')) {
@@ -2669,21 +2673,21 @@ void thal( const seq& oligo_f,
            const CProgParam_ThAl::mode modem,
            thal_results *o)
 {
-   if (NULL == o) return; /* Leave it to the caller to crash */
+   if (!o) return; /* Leave it to the caller to crash */
    double* SH;
    int i, j;
    int k;
    int *bp;
-   unsigned char *oligo2_rev = NULL;
+   seq    oligo2_rev ;
    double mh, ms;
    double G1, bestG;
 
    send5       = hend5      = NULL;
    enthalpyDPT = entropyDPT = NULL;
-   numSeq1     = numSeq2    = NULL;
-   oligo1      = oligo2     = NULL;
+   numSeq1     = numSeq2    = {};
+   oligo1      = oligo2     = {};
 
-   o->msg = "";
+   o->msg = "";                          // ???
    o->temp = THAL_ERROR_SCORE;
    errno = 0;
 
@@ -2704,85 +2708,53 @@ void thal( const seq& oligo_f,
         throw std::length_error ("Target sequence (2) length > maximum allowed (" + std::itos( MAX_LEN)  ") "
                                  "in thermodynamic alignment"  );
 
+    if (!a) throw std::runtime_error("Null 'in' argument pointer passed to thermodynamic alignment");
 
-   CHECK_ERROR(NULL == a,  "NULL 'in' pointer");
-   CHECK_ERROR(   a->type != CProgParam_ThAl::type::Any
-               && a->type != CProgParam_ThAl::type::end1
-               && a->type != CProgParam_ThAl::type::end2
-               && a->type != CProgParam_ThAl::type::Hairpin,
-               "Illegal type");
+    if (  a->type != CProgParam_ThAl::type::Any      // 1
+       && a->type != CProgParam_ThAl::type::end1     // 2
+       && a->type != CProgParam_ThAl::type::end2     // 3
+       && a->type != CProgParam_ThAl::type::Hairpin) // 4
+          throw std::runtime_error("Illegal task type passed to thermodynamic alignment");
+
    o->align_end_1 = -1;
    o->align_end_2 = -1;
 
-   if (oligo_f && '\0' == *oligo_f) {
-      strcpy(o->msg, "Empty first sequence");
-      o->temp = 0.0;
-      return;
-   }
-   if (oligo_r && '\0' == *oligo_r) {
-      strcpy(o->msg, "Empty second sequence");
-      o->temp = 0.0;
-      return;
-   }
-   if (0 == len_f) {
-      o->temp = 0.0;
-      return;
-   }
-   if (0 == len_r) {
-      o->temp = 0.0;
-      return;
-   }
-   if(a->type!=3) {
-      oligo1 = (unsigned char*) safe_malloc((len_f + 1) * sizeof(unsigned char), o);
-      oligo2 = (unsigned char*) safe_malloc((len_r + 1) * sizeof(unsigned char), o);
-      strcpy((char*)oligo1,(const char*)oligo_f);
-      strcpy((char*)oligo2,(const char*)oligo_r);
-   } else  {
-      oligo1 = (unsigned char*) safe_malloc((len_r + 1) * sizeof(unsigned char), o);
-      oligo2 = (unsigned char*) safe_malloc((len_f + 1) * sizeof(unsigned char), o);
-      strcpy((char*)oligo1,(const char*)oligo_r);
-      strcpy((char*)oligo2,(const char*)oligo_f);
-   }
+   if (!oligo_f ) throw std::invalid_argument("Empty first sequence passed to thermodynamic alignment");
+   if (!oligo_r ) throw std::invalid_argument("Empty second sequence passed to thermodynamic alignment");
+
+   oligo1=oligo_f; oligo2 = oligo_r;
+
+   if(a->type!=CProgParam_ThAl::type::end2) oligo1.swap(oligo2);     // 3
+
    /*** INIT values for unimolecular and bimolecular structures ***/
-   if (a->type==4) { /* unimolecular folding */
-      len2 = length_unsig_char(oligo2);
+   if (a->type==CProgParam_ThAl::type::Hairpin)                         /* unimolecular folding     4 */
+   {
+      len2 = oligo2.length();
       len3 = len2 -1;
       dplx_init_H = 0.0;
       dplx_init_S = -0.00000000001;
       RC=0;
-   } else if(a->type!=4) {
-      /* hybridization of two oligos */
+   }
+   else //if(a->type!=4)  /* all the others ----> hybridization of two oligos */
+   {
       dplx_init_H = 200;
       dplx_init_S = -5.7;
-      if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2)) {
+      if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2))
+      {
          RC = R  * log(a->dna_conc/1000000000.0);
       } else {
          RC = R  * log(a->dna_conc/4000000000.0);
       }
-      if(a->type!=3) {
-         oligo2_rev = (unsigned char*) safe_malloc((length_unsig_char(oligo_r) + 1) * sizeof(unsigned char), o);
-         strcpy((char*)oligo2_rev,(const char*)oligo_r);
-      } else {
-         oligo2_rev = (unsigned char*) safe_malloc((length_unsig_char(oligo_f) + 1) * sizeof(unsigned char), o);
-         strcpy((char*)oligo2_rev,(const char*)oligo_f);
-      }
+
+      oligo2_rev = a->type!=CProgParam_ThAl::type::end2 ?  oligo_r :  oligo_f ;
       reverse(oligo2_rev); /* REVERSE oligo2, so it goes to dpt 3'->5' direction */
-      free(oligo2);
-      oligo2=NULL;
-      oligo2=&oligo2_rev[0];
-   } else {
-      strcpy(o->msg, "Wrong alignment type!");
-      o->temp = THAL_ERROR_SCORE;
-      errno=0;
-#ifdef DEBUG
-      fprintf(stderr, o->msg);
-#endif
-      return;
+      oligo2 = oligo2_rev;   //      oligo2=&oligo2_rev[0];   //   an alias !!!
    }
+
    len1 = length_unsig_char(oligo1);
    len2 = length_unsig_char(oligo2);
    /* convert nucleotides to numbers */
-   numSeq1 = (unsigned char*) safe_realloc(numSeq1, len1 + 2, o);
+   numSeq1 = (unsigned char*) safe_realloc(numSeq1, len1 + 2, o);    // +2 !!
    numSeq2 = (unsigned char*) safe_realloc(numSeq2, len2 + 2, o);
 
    /*** Calc part of the salt correction ***/
@@ -2796,12 +2768,12 @@ void thal( const seq& oligo_f,
    }
    for(i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
    for(i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
-   for(i = 1; i <= len1; ++i) numSeq1[i] = str2int(oligo1[i - 1]);
+   for(i = 1; i <= len1; ++i) numSeq1[i] = str2int(oligo1[i - 1]);    // bypass numSeq1[0]
    for(i = 1; i <= len2; ++i) numSeq2[i] = str2int(oligo2[i - 1]);
    numSeq1[0] = numSeq1[len1 + 1] = numSeq2[0] = numSeq2[len2 + 1] = 4; /* mark as N-s */
-   if (a->type==4) { /* calculate structure of monomer */
-      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o);
-      entropyDPT = safe_recalloc(entropyDPT, len1, len2, o);
+   if (a->type==4) {                        /* calculate structure of monomer */
+      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o);   // safe_realloc(ptr, m * n * sizeof(double)
+      entropyDPT  = safe_recalloc(entropyDPT , len1, len2, o);
       initMatrix2();
       fillMatrix2(a->maxLoop, o);
       calc_terminal_bp(a->temp);
@@ -2835,7 +2807,7 @@ void thal( const seq& oligo_f,
       enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o); /* dyn. programming table for dS and dH */
       entropyDPT = safe_recalloc(entropyDPT, len1, len2, o); /* enthalpyDPT is 3D array represented as 1D array */
       initMatrix();
-      fillMatrix(a->maxLoop, o);
+      fillMatrix(a->maxLoop );
       SH = (double*) safe_malloc(2 * sizeof(double), o);
       /* calculate terminal basepairs */
       bestI = bestJ = 0;
