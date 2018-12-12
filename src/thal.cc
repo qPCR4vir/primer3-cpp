@@ -426,15 +426,22 @@ readParamFile(const std::filesystem::path& dirname,
 
 int thal_parameters::set_defaults( )
 {
-    this->dangle_dh    = std::make_unique<std::istrstream>(dangle_dh_data );
-    this->dangle_ds    = std::make_unique<std::istrstream>(dangle_ds_data);
-    this->loops_dh     = std::make_unique<std::istrstream>(loops_dh_data );
-    this->loops_ds     = std::make_unique<std::istrstream>(loops_ds_data );
-    this->stack_dh     = std::make_unique<std::istrstream>(stack_dh_data );
-    this->stack_ds     = std::make_unique<std::istrstream>(stack_ds_data );
-    this->stackmm_dh   = std::make_unique<std::istrstream>(stackmm_dh_data);
-    this->stackmm_ds   = std::make_unique<std::istrstream>(stackmm_ds_data);
-    this->tetraloop_dh = std::make_unique<std::istrstream>(tetraloop_dh_data );
+    this->dangle_dh         = std::make_unique<std::istrstream>(dangle_dh_data );
+    this->dangle_ds         = std::make_unique<std::istrstream>(dangle_ds_data);
+    this->loops_dh          = std::make_unique<std::istrstream>(loops_dh_data );
+    this->loops_ds          = std::make_unique<std::istrstream>(loops_ds_data );
+    this->stack_dh          = std::make_unique<std::istrstream>(stack_dh_data );
+    this->stack_ds          = std::make_unique<std::istrstream>(stack_ds_data );
+    this->stackmm_dh        = std::make_unique<std::istrstream>(stackmm_dh_data);
+    this->stackmm_ds        = std::make_unique<std::istrstream>(stackmm_ds_data);
+    this->tetraloop_dh      = std::make_unique<std::istrstream>(tetraloop_dh_data );
+    this->tetraloop_ds      = std::make_unique<std::istrstream>(tetraloop_ds_data );
+    this->triloop_dh        = std::make_unique<std::istrstream>(triloop_dh_data );
+    this->triloop_ds        = std::make_unique<std::istrstream>(triloop_ds_data );
+    this->tstack_tm_inf_ds  = std::make_unique<std::istrstream>(tstack_tm_inf_ds_data );
+    this->tstack_dh         = std::make_unique<std::istrstream>(tstack_dh_data );
+    this->tstack2_dh        = std::make_unique<std::istrstream>(tstack2_dh_data );
+    this->tstack2_ds        = std::make_unique<std::istrstream>(tstack2_ds_data );
 }
 
 int thal_parameters::load (const std::filesystem::path& dirname )
