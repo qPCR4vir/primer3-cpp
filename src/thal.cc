@@ -178,21 +178,6 @@ static int length_unsig_char(const unsigned char * str); /* returns length of un
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
                                                                    for Tm by SantaLucia et al */
 
-static void tableStartATS(double atp_value, double atp[5][5]); /* creates table of entropy values for nucleotides
-                                                                  to which AT-penlty must be applied */
-
-static void tableStartATH(double atp_value, double atp[5][5]);
-
-static int comp3loop(const void*, const void*); /* checks if sequnece consists of specific triloop */
-
-static int comp4loop(const void*, const void*); /* checks if sequnece consists of specific tetraloop */
-
-static void initMatrix(); /* initiates thermodynamic parameter tables of entropy and enthalpy for dimer */
-
-static void initMatrix2(); /* initiates thermodynamic parameter tables of entropy and enthalpy for monomer */
-
-static void fillMatrix(int maxLoop, thal_results* o); /* calc-s thermod values into dynamic progr table (dimer) */
-
 static void fillMatrix2(int maxLoop, thal_results* o); /* calc-s thermod values into dynamic progr table (monomer) */
 
 static void maxTM(int i, int j); /* finds max Tm while filling the dyn progr table using stacking S and stacking H (dimer) */
@@ -296,7 +281,7 @@ static double tstackEntropies[5][5][5][5]; /* ther params for terminal mismatche
 static double tstackEnthalpies[5][5][5][5]; /* ther params for terminal mismatches */
 static double tstack2Entropies[5][5][5][5]; /* ther params for internal terminal mismatches */
 static double tstack2Enthalpies[5][5][5][5]; /* ther params for internal terminal mismatches */
-using loop_prmtr = std::map<std::string, double> ;   ///< loops parameter as map of char sequence to value
+using loop_prmtr = std::map<seq, double> ;   ///< loops parameter as map of uchar sequence code to value
 loop_prmtr triloopEntropies,     /* therm penalties for given triloop   seq-s */
            triloopEnthalpies,    /* therm penalties for given triloop   seq-s */
            tetraloopEntropies,   /* therm penalties for given tetraloop seq-s */
@@ -744,47 +729,16 @@ tableStartATH(double atp_value, double atpH[5][5])
    atpH[0][3] = atpH[3][0] = atp_value;
 }
 
-static int 
-comp3loop(const void* loop1, const void* loop2)
-{
-     int i;
-     const unsigned char*  h1 = (const unsigned char* ) loop1;
-     const struct triloop *h2 = (const struct triloop*) loop2;
-
-     for (i = 0; i < 5; ++i)
-            if (h1[i] < h2->loop[i])   return -1;
-       else if (h1[i] > h2->loop[i])   return  1;
-
-     return 0;
-}
-
-static int 
-comp4loop(const void* loop1, const void* loop2)
-{
-   int i;
-   const unsigned char* h1 = (const unsigned char*) loop1;
-   const struct tetraloop *h2 = (const struct tetraloop*) loop2;
-
-   for (i = 0; i < 6; ++i)
-     if (h1[i] < h2->loop[i])
-       return -1;
-   else if (h1[i] > h2->loop[i])
-     return 1;
-
-   return 0;
-}
-
-
-static void 
-initMatrix()
+static void
+initMatrix() ///< initiates thermodynamic parameter tables of entropy and enthalpy for dimer
 {
    int i, j;
-   for (i = 1; i <= len1; ++i) {
-      for (j = 1; j <= len2; ++j) {
-         if (bpIndx(numSeq1[i], numSeq2[j]) == 0)  {
-            EnthalpyDPT(i, j) = _INFINITY;
+   for (i = 1; i <= len1; ++i) {                       // 1 !!
+      for (j = 1; j <= len2; ++j) {                    // 1 !!
+         if (bpIndx(numSeq1[i], numSeq2[j]) == 0)  {   // bpIndx(a, b) BPI[a][b] , mismatch
+            EnthalpyDPT(i, j) = _INFINITY;             // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
             EntropyDPT(i, j) = -1.0;
-         } else {
+         } else {                                      // watson crick match
             EnthalpyDPT(i, j) = 0.0;
             EntropyDPT(i, j) = MinEntropy;
          }
@@ -793,13 +747,15 @@ initMatrix()
 }
 
 static void 
-initMatrix2()
+initMatrix2() ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
 {
    int i, j;
-   for (i = 1; i <= len1; ++i)
-     for (j = i; j <= len2; ++j)
-       if (j - i < MIN_HRPN_LOOP + 1 || (bpIndx(numSeq1[i], numSeq1[j]) == 0)) {
-          EnthalpyDPT(i, j) = _INFINITY;
+   for (i = 1; i <= len1; ++i)                           // 1 !!
+     for (j = i; j <= len2; ++j)                         // 1 !!
+       if ( j - i < MIN_HRPN_LOOP + 1 ||                 // i, j too near, loop too short
+           (bpIndx(numSeq1[i], numSeq1[j]) == 0))        // bpIndx(a, b) BPI[a][b] , mismatch
+       {
+          EnthalpyDPT(i, j) = _INFINITY;                 // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
           EntropyDPT(i, j) = -1.0;
        } else {
           EnthalpyDPT(i, j) = 0.0;
