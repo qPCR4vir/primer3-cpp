@@ -48,7 +48,7 @@
 #include <fstream>
 #include <strstream>
 #include <exception>
-#include <unordered_map>
+#include <map>
 
 #include "primer3_config/dangle.dh.hpp"
 #include "primer3_config/dangle.ds.hpp"
@@ -66,7 +66,6 @@
 #include "primer3_config/tstack_tm_inf.ds.hpp"
 #include "primer3_config/tstack2.dh.hpp"
 #include "primer3_config/tstack2.ds.hpp"
-
 
 #if defined(__sun)
 #include <ieeefp.h>
@@ -180,10 +179,6 @@ static unsigned char str2int(char c); /* converts DNA sequence to int; 0-A, 1-C,
 
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
                                                                    for Tm by SantaLucia et al */
-
-/*static void verifyStackTable(double stack[5][5][5][5], char* type);*/ /* just for debugging; the method is turned off by default */
-
-static void getTriloop(struct triloop**, struct triloop**, int* num, const thal_parameters *tp, thal_results* o);
 
 static void getTetraloop(struct tetraloop**, struct tetraloop**, int* num, const thal_parameters *tp, thal_results* o);
 
@@ -305,10 +300,11 @@ static double tstackEntropies[5][5][5][5]; /* ther params for terminal mismatche
 static double tstackEnthalpies[5][5][5][5]; /* ther params for terminal mismatches */
 static double tstack2Entropies[5][5][5][5]; /* ther params for internal terminal mismatches */
 static double tstack2Enthalpies[5][5][5][5]; /* ther params for internal terminal mismatches */
-std::unordered_map<std::string, double> triloopEntropies,     /* ther penalties for given triloop seq-s   */
-                                        triloopEnthalpies,    /* ther penalties for given triloop seq-s   */
-                                        tetraloopEntropies,   /* ther penalties for given tetraloop seq-s */
-                                        tetraloopEnthalpies ; /* ther penalties for given tetraloop seq-s */
+using loop_prmtr = std::map<std::string, double> ;   ///< loops parameter as map of char sequence to value
+loop_prmtr triloopEntropies,     /* therm penalties for given triloop   seq-s */
+           triloopEnthalpies,    /* therm penalties for given triloop   seq-s */
+           tetraloopEntropies,   /* therm penalties for given tetraloop seq-s */
+           tetraloopEnthalpies ; /* therm penalties for given tetraloop seq-s */
 static jmp_buf _jmp_buf;
 
 static unsigned char
@@ -494,16 +490,16 @@ readLoop(std::istream& istr , double &v1, double &v2, double &v3 )
 }
 
 /* Reads a line containing a short string and a double, used for reading a triloop or tetraloop. */
-static int
-readTLoop(std::istream& istr, std::string& s, double &v, int triloop )
+static void
+readTLoop(std::istream& istr, loop_prmtr& lprmtr,  bool triloop )
 {
+    std::string& s;
     if (triloop)    s.reserve(5);        /*triloop string has 5 characters*/
     else            s.reserve(6);        /*tetraloop string has 6 characters*/
 
   istr >> s;                            /* read the string */
-  v = readDouble(istr);
-  return 0;
-} 
+  lprmtr[s] = readDouble(istr);
+}
 
 static void 
 getStack(double stackEntropies [5][5][5][5],
@@ -699,23 +695,17 @@ getTstack2(double tstack2Entropies [5][5][5][5],
 }
 
 static void 
-getTriloop(struct triloop** triloopEntropies,
-           struct triloop** triloopEnthalpies, int* num, const thal_parameters *tp )
+getTriloop(loop_prmtr& triloopEntropies,
+           loop_prmtr& triloopEnthalpies, int* num, const thal_parameters *tp )
 {
-   int i, size;
+   int i, size=16;
    double value;
-   char *pt_ds = tp->triloop_ds;
    *num = 0;
-   size = 16;
-   if (*triloopEntropies != NULL) {
-     free(*triloopEntropies);
-     *triloopEntropies = NULL;
-   }
-   *triloopEntropies = (struct triloop*) safe_calloc(16, sizeof(struct triloop), o);
 
-   while (readTLoop(&pt_ds, (*triloopEntropies)[*num].loop, &value, 1, o) != -1)
+   while ( 1 )
    {
-      for (i = 0; i < 5; ++i)
+       readTLoop(tp->triloop_ds, triloopEntropies, true );
+       for (i = 0; i < 5; ++i)
         (*triloopEntropies)[*num].loop[i] = str2int((*triloopEntropies)[*num].loop[i]);
 
       (*triloopEntropies)[*num].value = value;
