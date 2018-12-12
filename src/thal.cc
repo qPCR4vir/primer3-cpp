@@ -654,66 +654,68 @@ getDangle(double dangleEntropies3 [5][5][5],
 static void 
 getLoop(double hairpinLoopEntropies[30], double interiorLoopEntropies[30], double bulgeLoopEntropies[30],
         double hairpinLoopEnthalpies[30], double interiorLoopEnthalpies[30], double bulgeLoopEnthalpies[30], 
-        const thal_parameters *tp, thal_results* o)
+        const thal_parameters *tp)
 {
    int k;
-   char *pt_ds = tp->loops_ds;
-   char *pt_dh = tp->loops_dh;
+   tp->loops_ds->seekg(std::ios_base::beg);
+   tp->loops_dh->seekg(std::ios_base::beg);
    for (k = 0; k < 30; ++k) {
-      readLoop(&pt_ds, &interiorLoopEntropies[k], &bulgeLoopEntropies[k], &hairpinLoopEntropies[k], o);
-      readLoop(&pt_dh, &interiorLoopEnthalpies[k], &bulgeLoopEnthalpies[k], &hairpinLoopEnthalpies[k], o);
+      readLoop(*tp->loops_ds, &interiorLoopEntropies[k], &bulgeLoopEntropies[k], &hairpinLoopEntropies[k]);
+      readLoop(*tp->loops_ds, &interiorLoopEnthalpies[k], &bulgeLoopEnthalpies[k], &hairpinLoopEnthalpies[k]);
    }
 }
 
 static void 
-getTstack(double tstackEntropies[5][5][5][5],
-          double tstackEnthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o)
+getTstack(double tstackEntropies [5][5][5][5],
+          double tstackEnthalpies[5][5][5][5], const thal_parameters *tp)
 {
    int i1, j1, i2, j2;
-   char *pt_ds = tp->tstack_tm_inf_ds;
-   char *pt_dh = tp->tstack_dh;
+   tp->tstack_tm_inf_ds->seekg(std::ios_base::beg);
+   tp->tstack_dh->seekg(std::ios_base::beg);
    for (i1 = 0; i1 < 5; ++i1)
      for (i2 = 0; i2 < 5; ++i2)
        for (j1 = 0; j1 < 5; ++j1)
          for (j2 = 0; j2 < 5; ++j2)
            if (i1 == 4 || j1 == 4) {
               tstackEnthalpies[i1][i2][j1][j2] = _INFINITY;
-              tstackEntropies[i1][i2][j1][j2] = -1.0;
+              tstackEntropies [i1][i2][j1][j2] = -1.0;
            } else if (i2 == 4 || j2 == 4) {
-              tstackEntropies[i1][i2][j1][j2] = 0.00000000001;
+              tstackEntropies [i1][i2][j1][j2] = 0.00000000001;
               tstackEnthalpies[i1][i2][j1][j2] = 0.0;
            } else {
-              tstackEntropies[i1][i2][j1][j2] = readDouble(&pt_ds, o);
-              tstackEnthalpies[i1][i2][j1][j2] = readDouble(&pt_dh, o);
-              if (!isFinite(tstackEntropies[i1][i2][j1][j2]) || !isFinite(tstackEnthalpies[i1][i2][j1][j2])) {
-                 tstackEntropies[i1][i2][j1][j2] = -1.0;
+              tstackEntropies [i1][i2][j1][j2] = readDouble(*tp->tstack_tm_inf_ds);
+              tstackEnthalpies[i1][i2][j1][j2] = readDouble(*tp->tstack_dh);
+              if (   !isFinite(tstackEntropies [i1][i2][j1][j2])
+                  || !isFinite(tstackEnthalpies[i1][i2][j1][j2]) ) {
+                 tstackEntropies [i1][i2][j1][j2] = -1.0;
                  tstackEnthalpies[i1][i2][j1][j2] = _INFINITY;
               }
            }
 }
 
 static void 
-getTstack2(double tstack2Entropies[5][5][5][5], double tstack2Enthalpies[5][5][5][5], const thal_parameters *tp, thal_results* o)
+getTstack2(double tstack2Entropies [5][5][5][5],
+           double tstack2Enthalpies[5][5][5][5], const thal_parameters *tp )
 {
 
    int i1, j1, i2, j2;
-   char *pt_ds = tp->tstack2_ds;
-   char *pt_dh = tp->tstack2_dh;
+   tp->tstack2_ds->seekg(std::ios_base::beg);
+   tp->tstack2_dh->seekg(std::ios_base::beg);
    for (i1 = 0; i1 < 5; ++i1)
      for (i2 = 0; i2 < 5; ++i2)
        for (j1 = 0; j1 < 5; ++j1)
          for (j2 = 0; j2 < 5; ++j2)
            if (i1 == 4 || j1 == 4)  {
               tstack2Enthalpies[i1][i2][j1][j2] = _INFINITY;
-              tstack2Entropies[i1][i2][j1][j2] = -1.0;
+              tstack2Entropies [i1][i2][j1][j2] = -1.0;
            } else if (i2 == 4 || j2 == 4) {
-              tstack2Entropies[i1][i2][j1][j2] = 0.00000000001;
+              tstack2Entropies [i1][i2][j1][j2] = 0.00000000001;
               tstack2Enthalpies[i1][i2][j1][j2] = 0.0;
            } else {
-              tstack2Entropies[i1][i2][j1][j2] = readDouble(&pt_ds, o);
-              tstack2Enthalpies[i1][i2][j1][j2] = readDouble(&pt_dh, o);
+              tstack2Entropies [i1][i2][j1][j2] = readDouble(*tp->tstack2_ds);
+              tstack2Enthalpies[i1][i2][j1][j2] = readDouble(*tp->tstack2_dh);
               if (!isFinite(tstack2Entropies[i1][i2][j1][j2]) || !isFinite(tstack2Enthalpies[i1][i2][j1][j2])) {
-                 tstack2Entropies[i1][i2][j1][j2] = -1.0;
+                 tstack2Entropies [i1][i2][j1][j2] = -1.0;
                  tstack2Enthalpies[i1][i2][j1][j2] = _INFINITY;
               }
            }
