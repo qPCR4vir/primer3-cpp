@@ -56,9 +56,16 @@
 #include "primer3_config/loops.ds.hpp"
 #include "primer3_config/stack.dh.hpp"
 #include "primer3_config/stack.ds.hpp"
-
-#include "primer3_config/stack.dh.hpp"
-#include "primer3_config/stack.dh.hpp"
+#include "primer3_config/stackmm.dh.hpp"
+#include "primer3_config/stackmm.dh.hpp"
+#include "primer3_config/tetraloop.dh.hpp"
+#include "primer3_config/tetraloop.ds.hpp"
+#include "primer3_config/triloop.dh.hpp"
+#include "primer3_config/triloop.ds.hpp"
+#include "primer3_config/tstack.dh.hpp"
+#include "primer3_config/tstack_tm_inf.ds.hpp"
+#include "primer3_config/tstack2.dh.hpp"
+#include "primer3_config/tstack2.ds.hpp"
 
 
 #if defined(__sun)
