@@ -178,8 +178,6 @@ static int length_unsig_char(const unsigned char * str); /* returns length of un
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
                                                                    for Tm by SantaLucia et al */
 
-static void getTetraloop(struct tetraloop**, struct tetraloop**, int* num, const thal_parameters *tp, thal_results* o);
-
 static void tableStartATS(double atp_value, double atp[5][5]); /* creates table of entropy values for nucleotides
                                                                   to which AT-penlty must be applied */
 
@@ -698,94 +696,31 @@ static void
 getTriloop(loop_prmtr& triloopEntropies,
            loop_prmtr& triloopEnthalpies, int* num, const thal_parameters *tp )
 {
-   int i, size=16;
-   double value;
-   *num = 0;
+   triloopEntropies .clear();  // ?? dont reuse
+   triloopEnthalpies.clear();
 
-   while ( 1 )
-   {
-       readTLoop(tp->triloop_ds, triloopEntropies, true );
-       for (i = 0; i < 5; ++i)
-        (*triloopEntropies)[*num].loop[i] = str2int((*triloopEntropies)[*num].loop[i]);
+   tp->triloop_ds->seekg(std::ios_base::beg);
+   tp->triloop_dh->seekg(std::ios_base::beg);
 
-      (*triloopEntropies)[*num].value = value;
-      ++*num;
-      if (*num == size)        {
-         size *= 2;
-         *triloopEntropies = (struct triloop*) safe_realloc(*triloopEntropies, size * sizeof(struct triloop), o);
-      }
-   }
-   *triloopEntropies = (struct triloop*) safe_realloc(*triloopEntropies, *num * sizeof(struct triloop), o);
-
-   char *pt_dh = tp->triloop_dh;
-   *num = 0;
-   size = 16;
-
-   if (*triloopEnthalpies != NULL) {
-     free(*triloopEnthalpies);
-     *triloopEnthalpies = NULL;
-   }
-   *triloopEnthalpies = (struct triloop*) safe_calloc(16, sizeof(struct triloop), o);
-   while (readTLoop(&pt_dh, (*triloopEnthalpies)[*num].loop, &value, 1, o) != -1) {
-      for (i = 0; i < 5; ++i)
-        (*triloopEnthalpies)[*num].loop[i] = str2int((*triloopEnthalpies)[*num].loop[i]);
-      (*triloopEnthalpies)[*num].value = value;
-      ++*num;
-      if (*num == size) {
-         size *= 2;
-         *triloopEnthalpies = (struct triloop*) safe_realloc(*triloopEnthalpies, size * sizeof(struct triloop), o);
-      }
-   }
-   *triloopEnthalpies = (struct triloop*) safe_realloc(*triloopEnthalpies, *num * sizeof(struct triloop), o);
+   while ( readTLoop(tp->triloop_ds, triloopEntropies , true ) ;
+   while ( readTLoop(tp->triloop_dh, triloopEnthalpies, true ) ;
 }
 
-static void 
-getTetraloop(struct tetraloop** tetraloopEntropies, struct tetraloop** tetraloopEnthalpies, int* num, const thal_parameters *tp, thal_results* o)
+static void
+getTetraloop(loop_prmtr& tetraloopEntropies,
+             loop_prmtr& tetraloopEnthalpies, int* num, const thal_parameters *tp )
 {
-   int i, size;
-   double value;
-   char *pt_ds = tp->tetraloop_ds;
-   *num = 0;
-   size = 16;
-   if (*tetraloopEntropies != NULL) {
-     free(*tetraloopEntropies);
-     *tetraloopEntropies = NULL;
-   }
-   *tetraloopEntropies = (struct tetraloop*) safe_calloc(16, sizeof(struct tetraloop), o);
-   while (readTLoop(&pt_ds, (*tetraloopEntropies)[*num].loop, &value, 0, o) != -1) {
-      for (i = 0; i < 6; ++i)
-        (*tetraloopEntropies)[*num].loop[i] = str2int((*tetraloopEntropies)[*num].loop[i]);
-      (*tetraloopEntropies)[*num].value = value;
-      ++*num;
-      if (*num == size) {
-         size *= 2;
-         *tetraloopEntropies = (struct tetraloop*) safe_realloc(*tetraloopEntropies, size * sizeof(struct tetraloop), o);
-      }
-   }
-   *tetraloopEntropies = (struct tetraloop*) safe_realloc(*tetraloopEntropies, *num * sizeof(struct tetraloop), o);
+    tetraloopEntropies .clear();  // ?? dont reuse
+    tetraloopEnthalpies.clear();
 
-   char *pt_dh = tp->tetraloop_dh;
-   *num = 0;
-   size = 16;
-   if (*tetraloopEnthalpies != NULL) {
-     free(*tetraloopEnthalpies);
-     *tetraloopEnthalpies = NULL;
-   }
-   *tetraloopEnthalpies = (struct tetraloop*) safe_calloc(16, sizeof(struct tetraloop), o);
-   while (readTLoop(&pt_dh, (*tetraloopEnthalpies)[*num].loop, &value, 0, o) != -1) {
-      for (i = 0; i < 6; ++i)
-        (*tetraloopEnthalpies)[*num].loop[i] = str2int((*tetraloopEnthalpies)[*num].loop[i]);
-      (*tetraloopEnthalpies)[*num].value = value;
-      ++*num;
-      if (*num == size) {
-         size *= 2;
-         *tetraloopEnthalpies = (struct tetraloop*) safe_realloc(*tetraloopEnthalpies, size * sizeof(struct tetraloop), o);
-      }
-   }
-   *tetraloopEnthalpies = (struct tetraloop*) safe_realloc(*tetraloopEnthalpies, *num * sizeof(struct tetraloop), o);
+    tp->triloop_ds->seekg(std::ios_base::beg);
+    tp->triloop_dh->seekg(std::ios_base::beg);
+
+    while ( readTLoop(tp->triloop_ds, tetraloopEntropies , false ) ;
+    while ( readTLoop(tp->triloop_dh, tetraloopEnthalpies, false ) ;
 }
 
-static void 
+static void
 tableStartATS(double atp_value, double atpS[5][5])
 {
 
