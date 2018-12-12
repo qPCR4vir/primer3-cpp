@@ -48,6 +48,7 @@
 #include <fstream>
 #include <strstream>
 #include <exception>
+#include <unordered_map>
 
 #include "primer3_config/dangle.dh.hpp"
 #include "primer3_config/dangle.ds.hpp"
@@ -156,13 +157,6 @@ static const int BPI[5][5] =  {
 
 /*** BEGIN STRUCTs ***/
 
-struct triloop {
-  char loop[5];
-  double value; };
-
-struct tetraloop {
-  char loop[6];
-  double value; };
 
 struct tracer /* structure for tracebacku - unimolecular str */ {
   int i;
@@ -304,37 +298,13 @@ static double tstackEntropies[5][5][5][5]; /* ther params for terminal mismatche
 static double tstackEnthalpies[5][5][5][5]; /* ther params for terminal mismatches */
 static double tstack2Entropies[5][5][5][5]; /* ther params for internal terminal mismatches */
 static double tstack2Enthalpies[5][5][5][5]; /* ther params for internal terminal mismatches */
-static struct triloop* triloopEntropies = NULL; /* ther penalties for given triloop seq-s */
-static struct triloop* triloopEnthalpies = NULL; /* ther penalties for given triloop seq-s */
-static struct tetraloop* tetraloopEntropies = NULL; /* ther penalties for given tetraloop seq-s */
-static struct tetraloop* tetraloopEnthalpies = NULL; /* ther penalties for given tetraloop seq-s */
+std::unordered_map<std::string, double> triloopEntropies,     /* ther penalties for given triloop seq-s   */
+                                        triloopEnthalpies,    /* ther penalties for given triloop seq-s   */
+                                        tetraloopEntropies,   /* ther penalties for given tetraloop seq-s */
+                                        tetraloopEnthalpies ; /* ther penalties for given tetraloop seq-s */
 static jmp_buf _jmp_buf;
 
-
-
-void 
-destroy_thal_structures()
-{
-  if (triloopEntropies != NULL) {
-    free(triloopEntropies);
-    triloopEntropies = NULL;
-  }
-  if (triloopEnthalpies != NULL) {
-    free(triloopEnthalpies);
-    triloopEnthalpies = NULL;
-  }
-  if (tetraloopEntropies != NULL) {
-    free(tetraloopEntropies);
-    tetraloopEntropies = NULL;
-  }
-  if (tetraloopEnthalpies != NULL) {
-    free(tetraloopEnthalpies);
-    tetraloopEnthalpies = NULL;
-  }
-}
-
-
-static unsigned char 
+static unsigned char
 str2int(char c)
 {
    switch (c) {
@@ -722,7 +692,8 @@ getTstack2(double tstack2Entropies [5][5][5][5],
 }
 
 static void 
-getTriloop(struct triloop** triloopEntropies, struct triloop** triloopEnthalpies, int* num, const thal_parameters *tp, thal_results* o)
+getTriloop(struct triloop** triloopEntropies,
+           struct triloop** triloopEnthalpies, int* num, const thal_parameters *tp )
 {
    int i, size;
    double value;
@@ -734,9 +705,12 @@ getTriloop(struct triloop** triloopEntropies, struct triloop** triloopEnthalpies
      *triloopEntropies = NULL;
    }
    *triloopEntropies = (struct triloop*) safe_calloc(16, sizeof(struct triloop), o);
-   while (readTLoop(&pt_ds, (*triloopEntropies)[*num].loop, &value, 1, o) != -1) {
+
+   while (readTLoop(&pt_ds, (*triloopEntropies)[*num].loop, &value, 1, o) != -1)
+   {
       for (i = 0; i < 5; ++i)
         (*triloopEntropies)[*num].loop[i] = str2int((*triloopEntropies)[*num].loop[i]);
+
       (*triloopEntropies)[*num].value = value;
       ++*num;
       if (*num == size)        {
@@ -841,16 +815,13 @@ tableStartATH(double atp_value, double atpH[5][5])
 static int 
 comp3loop(const void* loop1, const void* loop2)
 {
-
      int i;
-     const unsigned char* h1 = (const unsigned char*) loop1;
+     const unsigned char*  h1 = (const unsigned char* ) loop1;
      const struct triloop *h2 = (const struct triloop*) loop2;
 
      for (i = 0; i < 5; ++i)
-         if (h1[i] < h2->loop[i])
-             return -1;
-       else if (h1[i] > h2->loop[i])
-           return 1;
+            if (h1[i] < h2->loop[i])   return -1;
+       else if (h1[i] > h2->loop[i])   return  1;
 
      return 0;
 }
@@ -1406,9 +1377,15 @@ calc_hairpin(int i, int j, double* EntropyEnthalpy, int traceback)
 
    if (loopSize == 3) {         /* closing AT-penalty (+), triloop bonus, hairpin of 3 (+) */
       struct triloop* loop;
-      if (numTriloops) {
-         if ((loop = (struct triloop*) bsearch(numSeq1 + i, triloopEnthalpies, numTriloops, sizeof(struct triloop), comp3loop)))
+      if (numTriloops)
+      {
+         if ((loop = (struct triloop*) bsearch( numSeq1 + i,
+                                                triloopEnthalpies,
+                                                numTriloops,
+                                                sizeof(struct triloop),
+                                                comp3loop))                   )
            EntropyEnthalpy[1] += loop->value;
+
          if ((loop = (struct triloop*) bsearch(numSeq1 + i, triloopEntropies, numTriloops, sizeof(struct triloop), comp3loop)))
            EntropyEnthalpy[0] += loop->value;
       }
