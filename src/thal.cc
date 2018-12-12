@@ -306,7 +306,7 @@ loop_prmtr triloopEntropies,     /* therm penalties for given triloop   seq-s */
 static jmp_buf _jmp_buf;
 
 static unsigned char
-str2int(char c)          ///< converts DNA sequence to int (unsigned char) code; 0-A, 1-C, 2-G, 3-T, 4-whatever
+nt2code(char c)          ///< converts DNA nt char to unsigned char code; 0-A, 1-C, 2-G, 3-T, 4-whatever
 {
    switch (c) {
     case 'A': case '0':       return 0;
@@ -315,6 +315,14 @@ str2int(char c)          ///< converts DNA sequence to int (unsigned char) code;
     case 'T': case '3':       return 3;
    }
                               return 4;
+}
+
+seq nt2code (const std::string& nt)
+{
+    seq code;
+    code.reserve( nt.length() );
+    for (char n:nt) code+=nt2code(n);
+    return code;
 }
 
 /* memory stuff */
@@ -498,15 +506,14 @@ readLoop(std::istream& istr , double &v1, double &v2, double &v3 )
 }
 
 /* Reads a line containing a short string and a double, used for reading a triloop or tetraloop. */
-static void
+static std::istream&
 readTLoop(std::istream& istr, loop_prmtr& lprmtr,  bool triloop )
 {
-    std::string& s;
-    if (triloop)    s.reserve(5);        /*triloop string has 5 characters*/
-    else            s.reserve(6);        /*tetraloop string has 6 characters*/
-
-  istr >> s;                            /* read the string */
-  lprmtr[s] = readDouble(istr);
+    std::string& s; /*tetraloop string has 6 characters*/ /*triloop string has 5 characters*/
+    s.reserve(6);
+    istr >> s;                            /* read the string */
+    lprmtr[ nt2code(s) ] = readDouble(istr);
+    return istr;
 }
 
 static void 
