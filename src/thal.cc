@@ -765,21 +765,20 @@ initMatrix2() ///< initiates thermodynamic parameter tables of entropy and entha
 }
 
 static void 
-fillMatrix(int maxLoop, thal_results *o)
+fillMatrix(int maxLoop)                   /* calc-s thermod values into dynamic progr table (dimer) */
 {
    int d, i, j, ii, jj;
-   double* SH;
+   double SH[2];
 
-   SH = (double*) safe_malloc(2 * sizeof(double), o);
-   for (i = 1; i <= len1; ++i) {
-      for (j = 1; j <= len2; ++j) {
-         if(isFinite(EnthalpyDPT(i, j))) { /* if finite */
+   for (i = 1; i <= len1; ++i) {                                  // 1 !! because numSeq1[i-1] will be used
+      for (j = 1; j <= len2; ++j) {                               // 1 !! numSeq2[j-1] used
+         if(isFinite(EnthalpyDPT(i, j))) {                        /* if finite */
             SH[0] = -1.0;
             SH[1] = _INFINITY;
-            LSH(i,j,SH);
+            LSH(i,j,SH);   /* calculate terminal S and terminal H reading from 5'end (Left hand/3' end - Right end) */
             if(isFinite(SH[1])) {
-               EntropyDPT(i,j) = SH[0];
-               EnthalpyDPT(i,j) = SH[1];
+               EntropyDPT (i,j) = SH[0];
+               EnthalpyDPT(i,j) = SH[1];                        // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
             }
             if (i > 1 && j > 1) {
                maxTM(i, j); /* stack: sets EntropyDPT(i, j) and EnthalpyDPT(i, j) */
@@ -793,7 +792,7 @@ fillMatrix(int maxLoop, thal_results *o)
                   for (; ii > 0 && jj < j; --ii, ++jj) {
                      if (isFinite(EnthalpyDPT(ii, jj))) {
                         SH[0] = -1.0;
-                        SH[1] = _INFINITY;
+                        SH[1] = _INFINITY;     /* calculates bulges and internal loops for dimer structures */
                         calc_bulge_internal(ii, jj, i, j, SH,0,maxLoop);
                         if(SH[0] < MinEntropyCutoff) {
                            /* to not give dH any value if dS is unreasonable */
@@ -811,22 +810,22 @@ fillMatrix(int maxLoop, thal_results *o)
          }
       } /* for */
    } /* for */
-   free(SH);
 }
 
 static void 
-fillMatrix2(int maxLoop, thal_results* o)
+fillMatrix2(int maxLoop )
 {
    int i, j;
-   double* SH;
-   SH = (double*) safe_malloc(2 * sizeof(double), o);
+   double SH [2];
    for (j = 2; j <= len2; ++j)
-     for (i = j - MIN_HRPN_LOOP - 1; i >= 1; --i) {
-        if (isFinite(EnthalpyDPT(i, j))) {
+     for (i = j - MIN_HRPN_LOOP - 1; i >= 1; --i)
+     {
+        if (isFinite(EnthalpyDPT(i, j)))
+        {
            SH[0] = -1.0;
            SH[1] = _INFINITY;
-           maxTM2(i,j); /* calculate stack */
-           CBI(i, j, SH, 0,maxLoop); /* calculate Bulge and Internal loop and stack */
+           maxTM2(i,j);                       /* calculate stack */
+           CBI(i, j, SH, 0,maxLoop);          /* calculate Bulge and Internal loop and stack */
            SH[0] = -1.0;
            SH[1] = _INFINITY;
            calc_hairpin(i, j, SH, 0);
@@ -835,12 +834,11 @@ fillMatrix2(int maxLoop, thal_results* o)
                  SH[0] = MinEntropy;
                  SH[1] = 0.0;
               }
-              EntropyDPT(i,j) = SH[0];
+              EntropyDPT (i,j) = SH[0];
               EnthalpyDPT(i,j) = SH[1];
            }
         }
      }
-   free(SH);
 }
 
 
@@ -923,18 +921,18 @@ maxTM2(int i, int j)
    }
 }
 
-
+/* calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end) */
 static void 
-LSH(int i, int j, double* EntropyEnthalpy)
+LSH(int i, int j, double EntropyEnthalpy[2])
 {
    double S1, H1, T1, G1;
    double S2, H2, T2, G2;
    S1 = S2 = -1.0;
    H1 = H2 = -_INFINITY;
    T1 = T2 = -_INFINITY;
-   if (bpIndx(numSeq1[i], numSeq2[j]) == 0) {
+   if (bpIndx(numSeq1[i], numSeq2[j]) == 0) {      // bpIndx(a, b) BPI[a][b] , mismatch
       EntropyDPT(i, j) = -1.0;
-      EnthalpyDPT(i, j) = _INFINITY;
+      EnthalpyDPT(i, j) = _INFINITY;               // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
       return;
    }
    S1 = atPenaltyS(numSeq1[i], numSeq2[j]) + tstack2Entropies[numSeq2[j]][numSeq2[j-1]][numSeq1[i]][numSeq1[i-1]];
@@ -1197,7 +1195,7 @@ Hs(int i, int j, int k)
 }
 
 static void 
-CBI(int i, int j, double* EntropyEnthalpy, int traceback, int maxLoop)
+CBI(int i, int j, double EntropyEnthalpy[2], int traceback, int maxLoop)
 {
    int d, ii, jj;
    for (d = j - i - 3; d >= MIN_HRPN_LOOP + 1 && d >= j - i - 2 - maxLoop; --d)
@@ -1225,7 +1223,7 @@ CBI(int i, int j, double* EntropyEnthalpy, int traceback, int maxLoop)
 }
 
 static void 
-calc_hairpin(int i, int j, double* EntropyEnthalpy, int traceback)
+calc_hairpin(int i, int j, double EntropyEnthalpy[2], int traceback)
 {
    int loopSize = j - i - 1;
    double G1, G2;
@@ -1307,9 +1305,9 @@ calc_hairpin(int i, int j, double* EntropyEnthalpy, int traceback)
    return;
 }
 
-
+/* calculates bulges and internal loops for dimer structures */
 static void 
-calc_bulge_internal(int i, int j, int ii, int jj, double* EntropyEnthalpy, int traceback, int maxLoop)
+calc_bulge_internal(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
 {
    int loopSize1, loopSize2, loopSize;
    double S,H,G1,G2;
@@ -1464,7 +1462,7 @@ calc_bulge_internal(int i, int j, int ii, int jj, double* EntropyEnthalpy, int t
 }
 
 static void 
-calc_bulge_internal2(int i, int j, int ii, int jj, double* EntropyEnthalpy, int traceback, int maxLoop)
+calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
 {
    int loopSize1, loopSize2, loopSize;
    double T1, T2;
