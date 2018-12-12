@@ -2777,63 +2777,57 @@ CProgParam_ThAl::set_oligo_defaults( )
 
 /* central method: execute all sub-methods for calculating secondary
    structure for dimer or for monomer */
-void
-thal(const unsigned char *oligo_f,
-     const unsigned char *oligo_r,
-     const thal_args *a,
-     const thal_mode mode,
-     thal_results *o)
+void thal( const seq& oligo_f,
+           const seq& oligo_r,
+           CProgParam_ThAl *a,
+           const CProgParam_ThAl::mode modem,
+           thal_results *o)
 {
+   if (NULL == o) return; /* Leave it to the caller to crash */
    double* SH;
    int i, j;
-   int len_f, len_r;
    int k;
    int *bp;
    unsigned char *oligo2_rev = NULL;
    double mh, ms;
    double G1, bestG;
 
-   send5 = hend5 = NULL;
+   send5       = hend5      = NULL;
    enthalpyDPT = entropyDPT = NULL;
-   numSeq1 = numSeq2 = NULL;
-   oligo1 = oligo2 = NULL;
-   strcpy(o->msg, "");
+   numSeq1     = numSeq2    = NULL;
+   oligo1      = oligo2     = NULL;
+
+   o->msg = "";
    o->temp = THAL_ERROR_SCORE;
    errno = 0;
 
-   if (setjmp(_jmp_buf) != 0) {
-      o->temp = THAL_ERROR_SCORE;
-      return;  /* If we get here, that means we returned via a
-                 longjmp.  In this case errno might be ENOMEM,
-                 but not necessarily. */
-   }
+    int len_f = oligo_f.length() ;
+    int len_r = oligo_r.length() ;
 
-   CHECK_ERROR(NULL == oligo_f, "NULL first sequence");
-   CHECK_ERROR(NULL == oligo_r, "NULL second sequence");
-   len_f = length_unsig_char(oligo_f);
-   len_r = length_unsig_char(oligo_r);
-
-   /*CHECK_ERROR(1==len_f, "Length 1 first sequence");
-   CHECK_ERROR(1==len_r, "Length 1 second sequence"); */
    /* The following error messages will be seen by end users and will
       not be easy to understand. */
-   CHECK_ERROR((len_f > THAL_MAX_ALIGN) && (len_r > THAL_MAX_ALIGN),
-               "Both sequences longer than " XSTR(THAL_MAX_ALIGN)
-                       " for thermodynamic alignment");
-   CHECK_ERROR((len_f > THAL_MAX_SEQ),
-               LONG_SEQ_ERR_STR(THAL_MAX_SEQ) " (1)");
-   CHECK_ERROR((len_r > THAL_MAX_SEQ),
-               LONG_SEQ_ERR_STR(THAL_MAX_SEQ) " (2)");
+    if ((len_f > THAL_MAX_ALIGN) && (len_r > THAL_MAX_ALIGN))
+      throw std::length_error ("Both sequences longer than " + std::itos( THAL_MAX_ALIGN) +
+                               " for thermodynamic alignment");
+
+    if (len_f > THAL_MAX_SEQ )
+        throw std::length_error ("Target sequence (1) length > maximum allowed (" + std::itos( MAX_LEN)  ") "
+                                 "in thermodynamic alignment"  );
+
+    if (len_r > THAL_MAX_SEQ )
+        throw std::length_error ("Target sequence (2) length > maximum allowed (" + std::itos( MAX_LEN)  ") "
+                                 "in thermodynamic alignment"  );
+
 
    CHECK_ERROR(NULL == a,  "NULL 'in' pointer");
-   if (NULL == o) return; /* Leave it to the caller to crash */
-   CHECK_ERROR(a->type != thal_any
-               && a->type != thal_end1
-               && a->type != thal_end2
-               && a->type != thal_hairpin,
+   CHECK_ERROR(   a->type != CProgParam_ThAl::type::Any
+               && a->type != CProgParam_ThAl::type::end1
+               && a->type != CProgParam_ThAl::type::end2
+               && a->type != CProgParam_ThAl::type::Hairpin,
                "Illegal type");
    o->align_end_1 = -1;
    o->align_end_2 = -1;
+
    if (oligo_f && '\0' == *oligo_f) {
       strcpy(o->msg, "Empty first sequence");
       o->temp = 0.0;

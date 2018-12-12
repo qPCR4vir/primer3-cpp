@@ -152,7 +152,7 @@ class CProgParam_ThAl
 } ;
 
 /* Structure for receiving results from the thermodynamic alignment calculation */
-class Results
+class thal_results
 {
 public:
     std::string  msg;
@@ -168,8 +168,8 @@ using seq = std::basic_string<unsigned char> ;
 ///    is set to THAL_ERROR_SCORE and a message is put in o->msg.  The
 ///    error might be caused by ENOMEM. To determine this it is necessary
 ///    to check errno.
-void thal( const seq& oligo1,
-           const seq& oligo2,
+void thal( const seq& oligo_f,
+           const seq& oligo_r,
            CProgParam_ThAl *a,
            const CProgParam_ThAl::mode mode);
 
