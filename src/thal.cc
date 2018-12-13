@@ -2388,8 +2388,10 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
    N = 0;
    double mg, t;
    if (!isFinite(ms) || !isFinite(mh)) {
-      if((mode != THL_FAST) && (mode != THL_DEBUG_F)) {
-        if (mode != THL_STRUCT) {
+      if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
+      {
+        if (mode != CProgParam_ThAl::mode::STRUCT)
+        {
           printf("0\tdS = %g\tdH = %g\tinf\tinf\n", (double) ms,(double) mh);
 #ifdef DEBUG
           fputs("No temperature could be calculated\n",stderr);
@@ -2400,9 +2402,12 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
          o->temp = 0.0;       /* lets use generalization here */
          strcpy(o->msg, "No predicted sec struc for given seq\n");
       }
-   } else {
-      if((mode != THL_FAST) && (mode != THL_DEBUG_F)) {
-         for (i = 1; i < len1; ++i) {
+   } else
+   {
+      if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
+      {
+         for (i = 1; i < len1; ++i)
+         {
             if(bp[i-1] > 0) N++;
          }
       } else {
@@ -2412,11 +2417,16 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
          }
       }
       t = (mh / (ms + (((N/2)-1) * saltCorrection))) - ABSOLUTE_ZERO;
-      if((mode != THL_FAST) && (mode != THL_DEBUG_F)) {
+
+      if((mode != CProgParam_ThAl::mode::FAST) &&
+         (mode != CProgParam_ThAl::mode::DEBUG_F))
+      {
          mg = mh - (temp * (ms + (((N/2)-1) * saltCorrection)));
          ms = ms + (((N/2)-1) * saltCorrection);
          o->temp = (double) t;
-         if (mode != THL_STRUCT) {
+
+         if (mode != CProgParam_ThAl::mode::STRUCT)
+         {
            printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
                   len1, (double) ms, (double) mh, (double) mg, (double) t);
          } else
@@ -2444,13 +2454,14 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
          }
       }
    }
-   if ((mode == THL_GENERAL) || (mode == THL_DEBUG)) {
+   if ((mode == CProgParam_ThAl::mode::GENERAL) || (mode == CProgParam_ThAl::mode::DEBUG))
+   {
      printf("SEQ\t");
      for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
      printf("\nSTR\t%s\n", oligo1);
    }
-   if (mode == THL_STRUCT) {
-     ret_str = NULL;
+   if (mode == CProgParam_ThAl::mode::STRUCT) {
+     ret_str = {};
 
      //save_append_string(&ret_str, &ret_space, o, ret_para);
 
