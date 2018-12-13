@@ -174,37 +174,16 @@ struct tracer /* structure for tracebacku - unimolecular str */ {
 
 /*** END STRUCTs ***/
 
-static int length_unsig_char(const unsigned char * str); /* returns length of unsigned char; to avoid warnings while compiling */
-
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
                                                                    for Tm by SantaLucia et al */
 static void maxTM(int i, int j); /* finds max Tm while filling the dyn progr table using stacking S and stacking H (dimer) */
 
 static void maxTM2(int i, int j); /* finds max Tm while filling the dyn progr table using stacking S and stacking H (monomer) */
 
-/* calculates bulges and internal loops for dimer structures */
-static void calc_bulge_internal(int ii, int jj, int i, int j, double* EntropyEnthalpy, int traceback, int maxLoop);
-
-/* calculates bulges and internal loops for monomer structures */
-static void calc_bulge_internal2(int ii, int jj, int i, int j, double* EntropyEnthalpy, int traceback, int maxLoop);
-
-/* carries out Bulge and Internal loop and stack calculations to hairpin */
-static void CBI(int i, int j, double* EntropyEnthalpy, int traceback, int maxLoop);
-
-/* finds monomer structure that has maximum Tm */
-static void calc_hairpin(int i, int j, double* EntropyEnthalpy, int traceback);
-
 static double Ss(int i, int j, int k); /* returns stack entropy */
 static double Hs(int i, int j, int k); /* returns stack enthalpy */
 
-/* calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end) */
-static void LSH(int i, int j, double* EntropyEnthalpy);
-static void RSH(int i, int j, double* EntropyEnthalpy);
-
 static int max5(double, double, double, double, double);
-
-/* Is sequence symmetrical */
-static int symmetry_thermo(const unsigned char* seq);
 
 /* traceback for dimers */
 static void traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results* o);
@@ -1032,8 +1011,8 @@ LSH(int i, int j, double EntropyEnthalpy[2])
    }
    return;
 }
-
-static void 
+/* calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end) */
+static void
 RSH(int i, int j, double* EntropyEnthalpy)
 {
    double G1, G2;
@@ -1193,8 +1172,8 @@ Hs(int i, int j, int k)
       return stackEnthalpies[numSeq1[i]][numSeq1[i + 1]][numSeq2[j]][numSeq2[j + 1]];
    }
 }
-
-static void 
+/* carries out Bulge and Internal loop and stack calculations to hairpin */
+static void
 CBI(int i, int j, double EntropyEnthalpy[2], int traceback, int maxLoop)
 {
    int d, ii, jj;
@@ -1223,8 +1202,8 @@ CBI(int i, int j, double EntropyEnthalpy[2], int traceback, int maxLoop)
      }
    return;
 }
-
-static void 
+/* finds monomer structure that has maximum Tm */
+static void
 calc_hairpin(int i, int j, double EntropyEnthalpy[2], int traceback)
 {
    int loopSize = j - i - 1;
@@ -1919,7 +1898,7 @@ Htstack(int i, int j)
 { /* e.g AG_TC 210 */
    return tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
 }
-
+/* Is sequence symmetrical */
 /* Return if string is symmetrical. Used only once only in thal. TODO change to use code */
 static bool
 symmetry_thermo(const seq& sq)
