@@ -741,7 +741,7 @@ initMatrix() ///< initiates thermodynamic parameter tables of entropy and enthal
    }
 }
 
-static void 
+static void
 initMatrix2() ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
 {
    int i, j;
@@ -756,7 +756,6 @@ initMatrix2() ///< initiates thermodynamic parameter tables of entropy and entha
           EnthalpyDPT(i, j) = 0.0;
           EntropyDPT(i, j) = MinEntropy;
        }
-
 }
 
 static void 
@@ -808,7 +807,7 @@ fillMatrix(int maxLoop)                   /* calc-s thermod values into dynamic 
 }
 
 static void 
-fillMatrix2(int maxLoop )
+fillMatrix2(int maxLoop )         ///<  calc-s thermod values into dynamic progr table (monomer)
 {
    int i, j;
    double SH [2];
@@ -881,7 +880,7 @@ maxTM(int i, int j)
 }
 
 static void 
-maxTM2(int i, int j)
+maxTM2(int i, int j) /* finds max Tm while filling the dyn progr table using stacking S and stacking H (monomer) */
 {
    double T0, T1;
    double S0, S1;
@@ -889,29 +888,35 @@ maxTM2(int i, int j)
    T0 = T1 = -_INFINITY;
    S0 = EntropyDPT(i, j);
    H0 = EnthalpyDPT(i, j);
-   T0 = (H0 + dplx_init_H) /(S0 + dplx_init_S + RC);
-   if(isFinite(EnthalpyDPT(i, j))) {
-      S1 = (EntropyDPT(i + 1, j - 1) + Ss(i, j, 2));
+   T0 = (H0 + dplx_init_H) /(S0 + dplx_init_S + RC);    // ??
+   if(isFinite(EnthalpyDPT(i, j)))
+   {
+      S1 = (EntropyDPT (i + 1, j - 1) + Ss(i, j, 2));
       H1 = (EnthalpyDPT(i + 1, j - 1) + Hs(i, j, 2));
    } else {
       S1 = -1.0;
       H1 = _INFINITY;
    }
    T1 = (H1 + dplx_init_H) /(S1 + dplx_init_S + RC);
-   if(S1 < MinEntropyCutoff) {
+   if(S1 < MinEntropyCutoff)
+   {
       S1 = MinEntropy;
       H1 = 0.0;
    }
-   if(S0 < MinEntropyCutoff) {
+   if(S0 < MinEntropyCutoff)
+   {
       S0 = MinEntropy;
       H0 = 0.0;
    }
 
-   if(T1 > T0) {
-      EntropyDPT(i, j) = S1;
+   if(T1 > T0)
+   {
+      EntropyDPT (i, j) = S1;
       EnthalpyDPT(i, j) = H1;
-   } else {
-      EntropyDPT(i, j) = S0;
+   }
+   else
+   {
+      EntropyDPT (i, j) = S0;
       EnthalpyDPT(i, j) = H0;
    }
 }
@@ -1193,14 +1198,16 @@ static void
 CBI(int i, int j, double EntropyEnthalpy[2], int traceback, int maxLoop)
 {
    int d, ii, jj;
-   for (d = j - i - 3; d >= MIN_HRPN_LOOP + 1 && d >= j - i - 2 - maxLoop; --d)
+   for (d = j - i - 3; d >= MIN_HRPN_LOOP + 1 && d >= j - i - 2 - maxLoop; --d)  // ??
      for (ii = i + 1; ii < j - d && ii <= len1; ++ii) {
         jj = d + ii;
-        if(traceback==0) {
+        if(traceback==0)
+        {
            EntropyEnthalpy[0] = -1.0;
            EntropyEnthalpy[1] = _INFINITY;
         }
-        if (isFinite(EnthalpyDPT(ii, jj)) && isFinite(EnthalpyDPT(i, j))) {
+        if (isFinite(EnthalpyDPT(ii, jj)) && isFinite(EnthalpyDPT(i, j)))
+        {
            calc_bulge_internal2(i, j, ii, jj, EntropyEnthalpy, traceback,maxLoop);
            if(isFinite(EntropyEnthalpy[1])) {
               if(EntropyEnthalpy[0] < MinEntropyCutoff) {
@@ -1453,7 +1460,7 @@ calc_bulge_internal(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int
    }
    return;
 }
-
+/* calculates bulges and internal loops for monomer structures */
 static void 
 calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
 {
@@ -1548,7 +1555,7 @@ calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], in
       } else { /* we have _not_ implemented Jacobson-Stockaymayer equation; the maximum bulgeloop size is 30 */
 
          H = bulgeLoopEnthalpies[loopSize] + atPenaltyH(numSeq1[i], numSeq2[j]) + atPenaltyH(numSeq1[ii], numSeq2[jj]);
-         if(traceback!=1)
+         if(traceback!=1)                      //  atpH[a][b]
            H += EnthalpyDPT(ii, jj);
 
          S = bulgeLoopEntropies[loopSize] + atPenaltyS(numSeq1[i], numSeq2[j]) + atPenaltyS(numSeq1[ii], numSeq2[jj]);
@@ -1587,6 +1594,7 @@ calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], in
     
       T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
       T2 = (EnthalpyDPT(i, j) + dplx_init_H) / (EntropyDPT(i, j) + dplx_init_S + RC);
+
       if((DBL_EQ(T1,T2) == 2) || traceback) {
          if((T1 > T2) || ((traceback && T1 >= T2) || traceback==1)) {
             EntropyEnthalpy[0] = S;
@@ -1596,17 +1604,19 @@ calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], in
       return;
    } else { /* only internal loops */
 
-      H = interiorLoopEnthalpies[loopSize] + tstackEnthalpies[numSeq1[i]][numSeq1[i+1]][numSeq2[j]][numSeq2[j-1]] +
-        tstackEnthalpies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]]
+      H = interiorLoopEnthalpies[loopSize] + tstackEnthalpies[numSeq1[i ]][numSeq1[i+1 ]][numSeq2[ j]][numSeq2[j-1 ]] +
+                                             tstackEnthalpies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]]
         + (ILAH * abs(loopSize1 - loopSize2));
       if(traceback!=1)
         H += EnthalpyDPT(ii, jj);
 
-      S = interiorLoopEntropies[loopSize] + tstackEntropies[numSeq1[i]][numSeq1[i+1]][numSeq2[j]][numSeq2[j-1]] +
-        tstackEntropies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]] + (ILAS * abs(loopSize1 - loopSize2));
+      S = interiorLoopEntropies[loopSize] +
+              tstackEntropies[numSeq1[i ]][numSeq1[i+1 ]][numSeq2[j ]][numSeq2[j-1 ]] +
+              tstackEntropies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]] + (ILAS * abs(loopSize1 - loopSize2));
       if(traceback!=1)
         S += EntropyDPT(ii, jj);
-      if(!isFinite(H)) {
+      if(!isFinite(H))
+      {
          H = _INFINITY;
          S = -1.0;
       }
@@ -1622,7 +1632,8 @@ calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], in
 }
 
 static void 
-calc_terminal_bp(double temp) { /* compute exterior loop */
+calc_terminal_bp(double temp) /* compute exterior loop */ /* terminal bp for monomer structure */
+{
    int i;
    int max;
    SEND5(0) = SEND5(1) = -1.0;
@@ -2384,8 +2395,9 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
           fputs("No temperature could be calculated\n",stderr);
 #endif
         }
-      } else {
-         o->temp = 0.0; /* lets use generalization here */
+      } else
+      {
+         o->temp = 0.0;       /* lets use generalization here */
          strcpy(o->msg, "No predicted sec struc for given seq\n");
       }
    } else {
@@ -2394,7 +2406,8 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
             if(bp[i-1] > 0) N++;
          }
       } else {
-         for (i = 1; i < len1; ++i) {
+         for (i = 1; i < len1; ++i)     // both branch equal ???
+         {
             if(bp[i-1] > 0) N++;
          }
       }
@@ -2406,11 +2419,14 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
          if (mode != THL_STRUCT) {
            printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
                   len1, (double) ms, (double) mh, (double) mg, (double) t);
-         } else {
+         } else
+         {
            sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
                    (double) t, (double) mg, (double) mh, (double) ms);
          }
-      } else {
+      }
+      else
+      {
          o->temp = (double) t;
          return {};
       }
@@ -2436,7 +2452,7 @@ drawHairpin(std::vector<int>& bp, double mh, double ms,
    if (mode == THL_STRUCT) {
      ret_str = NULL;
 
-     save_append_string(&ret_str, &ret_space, o, ret_para);
+     //save_append_string(&ret_str, &ret_space, o, ret_para);
 
      ret_last_l = -1;
      ret_first_r = -1;
