@@ -159,7 +159,7 @@ public:
     double       temp;
     int          align_end_1;
     int          align_end_2;
-    char        *sec_struct= nullptr;
+    std::string  sec_struct;
 } ;
 
 using seq = std::basic_string<unsigned char> ;

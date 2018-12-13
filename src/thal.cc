@@ -380,12 +380,11 @@ push(struct tracer** stack, int i, int j, int mtrx, thal_results* o)
 }
 
 static void 
-reverse(unsigned char *s)
+reverse(seq& s)                                // not complement !
 {
-   int i,j;
-   char c;
-   for (i = 0, j = length_unsig_char(s)-1; i < j; i++, j--) {
-      c = s[i];
+   for (int i = 0, j = s.length()-1; i < j; i++, j--)
+   {
+      char c = s[i];
       s[i] = s[j];
       s[j] = c;
    }
@@ -1910,41 +1909,20 @@ Htstack(int i, int j)
    return tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
 }
 
-/* Return 1 if string is symmetrical, 0 otherwise. Used only once only in thal. TODO change to use code and BPI[]*/
-static int 
-symmetry_thermo(const unsigned char* seq)
+/* Return if string is symmetrical. Used only once only in thal. TODO change to use code */
+static bool
+symmetry_thermo(const seq& sq)
 {
-   char s;
-   char e;
-   const unsigned char *seq_end=seq;
-   int i = 0;
-   int seq_len=length_unsig_char(seq);    // and this
-   int mp = seq_len/2;
-   if(seq_len%2==1) {
-      return 0;
+   int end= sq.length();
+   if(end%2)  return false;   // symmetrical only if 2 | L
+   end--;
+   for(int i=0; i<end; i++, end-- )
+   {
+      char s=nt2code(sq[i]  );                  //  to avoid this
+      char e=nt2code(sq[end]);
+      if (! bpIndx(s,e) )  return false;
    }
-   seq_end+=seq_len;
-   seq_end--;
-   while(i<mp) {
-      i++;
-      s=toupper(*seq);                  //  to avoid this
-      e=toupper(*seq_end);
-      if (   (s=='A' && e!='T')
-          || (s=='T' && e!='A')
-          || (e=='A' && s!='T')
-          || (e=='T' && s!='A')) {
-         return 0;
-      }
-      if (   (s=='C' && e!='G')
-          || (s=='G' && e!='C')
-          || (e=='C' && s!='G')
-          || (e=='G' && s!='C')) {
-         return 0;
-      }
-      seq++;
-      seq_end--;
-   }
-   return 1;
+   return true;
 }
 
 static int 
@@ -1960,7 +1938,7 @@ length_unsig_char(const unsigned char * str)
 }
 
 static void 
-tracebacku(int* bp, int maxLoop,thal_results* o) /* traceback for unimolecular structure */
+tracebacku(std::vector<int>& bp, int maxLoop,thal_results* o) /* traceback for unimolecular structure */ /* traceback for hairpins */
 {
    int i, j;
    i = j = 0;
@@ -2079,15 +2057,16 @@ tracebacku(int* bp, int maxLoop,thal_results* o) /* traceback for unimolecular s
    free(EntropyEnthalpy);
 }
 
-
+/* traceback for dimers */
 static void 
-traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results* o)
+traceback(int i, int j, double RT, std::vector<int>&  ps1, std::vector<int>& ps2, int maxLoop, thal_results* o)
 {
    int d, ii, jj, done;
    double SH[2];
    ps1[i - 1] = j;
    ps2[j - 1] = i;
-   while(1) {
+   while(1)
+   {
       SH[0] = -1.0;
       SH[1] = _INFINITY;
       LSH(i,j,SH);
@@ -2095,7 +2074,9 @@ traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results
          break;
       }
       done = 0;
-      if (i > 1 && j > 1 && equal(EntropyDPT(i,j), Ss(i - 1, j - 1, 1) + EntropyDPT(i - 1, j - 1)) && equal(EnthalpyDPT(i,j), Hs(i - 1, j - 1, 1) + EnthalpyDPT(i - 1, j - 1))) {
+      if (i > 1 && j > 1 && equal(EntropyDPT (i,j), Ss(i - 1, j - 1, 1) + EntropyDPT (i - 1, j - 1)) &&
+                            equal(EnthalpyDPT(i,j), Hs(i - 1, j - 1, 1) + EnthalpyDPT(i - 1, j - 1)))
+      {
          i = i - 1;
          j = j - 1;
          ps1[i - 1] = j;
@@ -2113,7 +2094,9 @@ traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results
             SH[0] = -1.0;
             SH[1] = _INFINITY;
             calc_bulge_internal(ii, jj, i, j, SH,1,maxLoop);
-            if (equal(EntropyDPT(i, j), SH[0]) && equal(EnthalpyDPT(i, j), SH[1])) {
+            if (equal(EntropyDPT (i, j), SH[0]) &&
+                equal(EnthalpyDPT(i, j), SH[1]))
+            {
                i = ii;
                j = jj;
                ps1[i - 1] = j;
@@ -2127,13 +2110,11 @@ traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results
 }
 
 char * 
-drawDimer(int* ps1, int* ps2, double temp, double H, double S, const thal_mode mode, double t37, thal_results *o)
+drawDimer(std::vector<int>& ps1, std::vector<int>& ps2, double temp, double H, double S, const CProgParam_ThAl::mode mode, double t37, thal_results *o)
 {
    int  ret_space = 0;
-   char *ret_ptr = NULL;
    int ret_nr, ret_pr_once;
-   char ret_para[400];
-   char* ret_str[4];
+   std::string ret_str[4];
    int i, j, k, numSS1, numSS2, N;
    char* duplex[4];
    double G, t;
@@ -2381,17 +2362,16 @@ drawDimer(int* ps1, int* ps2, double temp, double H, double S, const thal_mode m
 
    return ret_ptr;
 }
-
-char * 
-drawHairpin(int* bp, double mh, double ms, const thal_mode mode, double temp, thal_results *o)
+/* prints ascii output of hairpin structure */
+std::string
+drawHairpin(std::vector<int>& bp, double mh, double ms,
+            const CProgParam_ThAl::mode mode, double temp, thal_results *o)
 {
    int  ret_space = 0;
-   char *ret_ptr = NULL;
+   std::string ret_str;
    int ret_last_l, ret_first_r, ret_center, ret_left_end, ret_right_start, ret_left_len, ret_right_len;
    int ret_add_sp_l, ret_add_sp_r;
    char ret_center_char;
-   char ret_para[400];
-   char* ret_str;
    /* Plain text */
    int i, N;
    N = 0;
@@ -2432,13 +2412,11 @@ drawHairpin(int* bp, double mh, double ms, const thal_mode mode, double temp, th
          }
       } else {
          o->temp = (double) t;
-         return NULL;
+         return {};
       }
    }
    /* plain-text output */
-   char* asciiRow;
-   asciiRow = (char*) safe_malloc(len1, o);
-   for(i = 0; i < len1; ++i) asciiRow[i] = '0';
+   std::string asciiRow (len1, '0');
    for(i = 1; i < len1+1; ++i) {
       if(bp[i-1] == 0) {
          asciiRow[(i-1)] = '-';
@@ -2452,7 +2430,7 @@ drawHairpin(int* bp, double mh, double ms, const thal_mode mode, double temp, th
    }
    if ((mode == THL_GENERAL) || (mode == THL_DEBUG)) {
      printf("SEQ\t");
-     for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);
+     for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
      printf("\nSTR\t%s\n", oligo1);
    }
    if (mode == THL_STRUCT) {
@@ -2463,68 +2441,51 @@ drawHairpin(int* bp, double mh, double ms, const thal_mode mode, double temp, th
      ret_last_l = -1;
      ret_first_r = -1;
      ret_center_char = '|';
-     for(i = 0; i < len1; ++i) {
-       if (asciiRow[i] == '/') {
-         ret_last_l = i;
-       }
-       if ((ret_first_r == -1) && (asciiRow[i] == '\\')) {
-         ret_first_r = i;
-       }
+     for(i = 0; i < len1; ++i)
+     {
+       if ( asciiRow[i] == '/')          ret_last_l  = i;
+       if ((ret_first_r == -1 ) &&
+           (asciiRow[i] == '\\'))        ret_first_r = i;
      }
      ret_center = ret_first_r - ret_last_l;
-     if (ret_center % 2 == 0) { 
-       /* ret_center is odd */
-       ret_left_end = ret_last_l + (ret_first_r - ret_last_l) / 2 - 1;
+
+     if (ret_center % 2 == 0)        /* ret_center is odd */
+     {
+       ret_left_end    = ret_last_l + (ret_first_r - ret_last_l) / 2 - 1;
        ret_center_char = (char) oligo1[ret_left_end + 1]; 
        ret_right_start = ret_left_end + 2;
-     } else {
-       /* ret_center is even */
-       ret_left_end = ret_last_l + (ret_first_r - ret_last_l - 1) / 2;
+     }
+     else
+     {                                 /* ret_center is even */
+       ret_left_end    = ret_last_l + (ret_first_r - ret_last_l - 1) / 2;
        ret_right_start = ret_left_end + 1;
      }
-     ret_left_len = ret_left_end + 1;
-     ret_right_len = len1 - ret_right_start;
-     ret_add_sp_l = 0;
-     ret_add_sp_r = 0;
-     if (ret_left_len > ret_right_len) {
-       ret_add_sp_r = ret_left_len - ret_right_len + 1;
-     }
-     if (ret_right_len > ret_left_len) {
-       ret_add_sp_l = ret_right_len - ret_left_len;
-     }
-     for (i = 0 ; i < ret_add_sp_l ; i++) {
-       save_append_char(&ret_str, &ret_space, o, ' ');
-     }
-     save_append_string(&ret_str, &ret_space, o, "5' ");
-     for (i = 0 ; i < ret_left_len ; i++) {
-       save_append_char(&ret_str, &ret_space, o, (char) oligo1[i]);
-     }
-     save_append_string(&ret_str, &ret_space, o, "U+2510\\n   ");
-     for (i = 0 ; i < ret_add_sp_l ; i++) {
-       save_append_char(&ret_str, &ret_space, o, ' ');
-     }
-     for (i = 0 ; i < ret_left_len ; i++) {
-       if (asciiRow[i] == '/') {	     
-         save_append_char(&ret_str, &ret_space, o, '|');
-       } else {
-         save_append_char(&ret_str, &ret_space, o, ' ');
-       }
-     }
-     if (ret_center_char == '|' ) {
-       save_append_string(&ret_str, &ret_space, o, "U+2502");
-     } else {
-       save_append_char(&ret_str, &ret_space, o, ret_center_char);
-     }
-     save_append_string(&ret_str, &ret_space, o, "\\n");
-     for (i = 0 ; i < ret_add_sp_r - 1 ; i++) {
-       save_append_char(&ret_str, &ret_space, o, ' ');
-     }
-     save_append_string(&ret_str, &ret_space, o, "3' ");
-     for (i = len1 ; i > ret_right_start - 1; i--) {
-       save_append_char(&ret_str, &ret_space, o, (char) oligo1[i]);
-     }
-     save_append_string(&ret_str, &ret_space, o, "U+2518\\n");
 
+     ret_left_len  = ret_left_end + 1;
+     ret_right_len = len1 - ret_right_start;
+     ret_add_sp_l  = 0;
+     ret_add_sp_r  = 0;
+
+     if (ret_left_len > ret_right_len)       ret_add_sp_r = ret_left_len  - ret_right_len + 1;
+     if (ret_right_len > ret_left_len)       ret_add_sp_l = ret_right_len - ret_left_len;
+
+     for (i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ; // save_append_char(&ret_str, &ret_space, o, ' ');
+     ret_str += "5' " ;                                     // save_append_string(&ret_str, &ret_space, o, "5' ");
+     for (i = 0 ; i < ret_left_len ; i++)  ret_str += (char) oligo1[i] ;
+     ret_str += "U+2510\\n   " ;
+     for (i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ;
+     for (i = 0 ; i < ret_left_len ; i++)
+     {
+       if (asciiRow[i] == '/')             ret_str += '|' ;
+       else                                ret_str += ' ' ;
+     }
+     if (ret_center_char == '|' )          ret_str += "U+2502" ;
+     else                                  ret_str += ret_center_char ;
+     ret_str += "\\n" ;
+     for (i = 0 ; i < ret_add_sp_r - 1 ; i++)       ret_str += ' ' ;
+     ret_str += "3' " ;
+     for (i = len1 ; i > ret_right_start - 1; i--)  ret_str += (char) oligo1[i] ;
+     ret_str += "U+2518\\n" ;
 /*
      save_append_string(&ret_str, &ret_space, o, "SEQ ");
      for(i = 0; i < len1; ++i) {
@@ -2534,14 +2495,8 @@ drawHairpin(int* bp, double mh, double ms, const thal_mode mode, double temp, th
      save_append_string(&ret_str, &ret_space, o, (const char*) oligo1);
      save_append_string(&ret_str, &ret_space, o, "\\n");
 */
-     ret_ptr = (char *) safe_malloc(strlen(ret_str) + 1, o);
-     strcpy(ret_ptr, ret_str);
-     if (ret_str != NULL) {
-       free(ret_str);
-     }
    }
-   free(asciiRow);
-   return ret_ptr;
+   return ret_str;
 }
 
 static void
@@ -2663,10 +2618,7 @@ void thal( const seq& oligo_f,
 {
    if (!o) return; /* Leave it to the caller to crash */
    double* SH;
-   int i, j;
-   int k;
    int *bp;
-   seq    oligo2_rev ;
    double mh, ms;
    double G1, bestG;
 
@@ -2709,22 +2661,27 @@ void thal( const seq& oligo_f,
    if (!oligo_f ) throw std::invalid_argument("Empty first sequence passed to thermodynamic alignment");
    if (!oligo_r ) throw std::invalid_argument("Empty second sequence passed to thermodynamic alignment");
 
-   oligo1=oligo_f; oligo2 = oligo_r;
-
+   oligo1 = oligo_f;
+   oligo2 = oligo_r;
    if(a->type!=CProgParam_ThAl::type::end2) oligo1.swap(oligo2);     // 3
+   len1 = oligo1.length();
+   len2 = oligo2.length();
+   for(int i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
+   for(int i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
 
-   /*** INIT values for unimolecular and bimolecular structures ***/
+    /*** INIT values for unimolecular and bimolecular structures ***/
+
    if (a->type==CProgParam_ThAl::type::Hairpin)                         /* unimolecular folding     4 */
    {
-      len2 = oligo2.length();
       len3 = len2 -1;
       dplx_init_H = 0.0;                /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
       dplx_init_S = -0.00000000001;     /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
       RC=0;
       send5.resize(len1);   hend5.resize(len1);
    }
-   else //if(a->type!=4)  /* all the others ----> hybridization of two oligos */
-   {
+   else //if(a->type!=4)                           /* all the others ----> hybridization of two oligos */
+   {                                               /* using the second reversed   */
+      reverse(oligo2);                  /* REVERSE oligo2, so it goes to dpt 3'->5' direction */
       dplx_init_H = 200;
       dplx_init_S = -5.7;
       if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2))
@@ -2769,23 +2726,28 @@ void thal( const seq& oligo_f,
       }
 
       if(o->temp==-_INFINITY && (!strcmp(o->msg, ""))) o->temp=0.0;
-      free(bp);
-      free(enthalpyDPT);
-      free(entropyDPT);
-      free(numSeq1);
-      free(numSeq2);
-      free(send5);
-      free(hend5);
-      free(oligo1);
-      free(oligo2);
+
+      enthalpyDPT={}; // .clear(); // shrink_to_fit   ??   free all memmory ?!
+      entropyDPT ={}; // .clear(); // shrink_to_fit   ??
+      numSeq1    ={}; // .clear(); // shrink_to_fit   ??
+      numSeq2    ={}; // .clear(); // shrink_to_fit   ??
+      send5      ={}; // .clear(); // shrink_to_fit   ??
+      hend5      ={}; // .clear(); // shrink_to_fit   ??
+      oligo1     ={}; // .clear(); // shrink_to_fit   ??
+      oligo2     ={}; // .clear(); // shrink_to_fit   ??
+
       return;
-   } else if(a->type!=4) { /* Hybridization of two moleculs */
-      len3 = len2;
-      enthalpyDPT = safe_recalloc(enthalpyDPT, len1, len2, o); /* dyn. programming table for dS and dH */
-      entropyDPT = safe_recalloc(entropyDPT, len1, len2, o); /* enthalpyDPT is 3D array represented as 1D array */
-      initMatrix();
-      fillMatrix(a->maxLoop );
-      SH = (double*) safe_malloc(2 * sizeof(double), o);
+
+   }
+   else          // if(a->type!=4) {                             /* Hybridization of two moleculs */
+   {
+      len3 = len2;                 // safe_realloc(ptr, m * n * sizeof(double)
+      enthalpyDPT.clear() ; enthalpyDPT.resize( len1 * len2 );  /* dyn. programming table for dS and dH */
+      entropyDPT .clear() ; entropyDPT .resize( len1 * len2 );  /* enthalpyDPT is 3D array represented as 1D array */
+
+      initMatrix();               ///< initiates thermodynamic parameter tables of entropy and enthalpy for dimer
+      fillMatrix(a->maxLoop );    ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
+      double SH[2];
       /* calculate terminal basepairs */
       bestI = bestJ = 0;
       G1 = bestG = _INFINITY;
