@@ -285,25 +285,6 @@ seq nt2code (const std::string& nt)
 
 /* memory stuff */
 
-static double* 
-safe_recalloc(double* ptr, int m, int n, thal_results* o)
-{
-   return (double*) safe_realloc(ptr, m * n * sizeof(double), o);
-}
-
-static void* 
-safe_calloc(size_t m, size_t n, thal_results *o)
-{
-   void* ptr;
-   if (!(ptr = calloc(m, n))) {
-#ifdef DEBUG
-      fputs("Error in calloc()\n", stderr);
-#endif
-      THAL_OOM_ERROR;
-   }
-   return ptr;
-}
-
 static void* 
 safe_malloc(size_t n, thal_results *o)
 {
