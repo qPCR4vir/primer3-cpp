@@ -466,7 +466,68 @@ getTetraloop(loop_prmtr& tetraloopEntropies,
     while ( readTLoop(tp->triloop_dh, tetraloopEnthalpies, false ) ;
 }
 
-//                    ***************   ThAl   ***********************
+/* Read the thermodynamic values (parameters) from the parameter files
+   in the directory specified by 'path'.  Return 0 on success and -1
+   on error. The thermodynamic values are stored in multiple static
+   variables. */
+int
+get_thermodynamic_values(const thal_parameters *tp, thal_results *o)
+{
+    if (setjmp(_jmp_buf) != 0) {
+        return -1;
+    }
+    getStack    ( stackEntropies,     stackEnthalpies,     tp, o);
+    /* verifyStackTable(stackEntropies, "entropy");
+       verifyStackTable(stackEnthalpies, "enthalpy"); */ /* this is for code debugging */
+    getStackint2( stackint2Entropies, stackint2Enthalpies, tp, o);
+    getDangle   ( dangleEntropies3,     dangleEnthalpies3,     dangleEntropies5,   dangleEnthalpies5, tp, o);
+    getLoop     ( hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
+                  interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
+    getTstack   ( tstackEntropies,     tstackEnthalpies, tp, o);
+    getTstack2  ( tstack2Entropies,    tstack2Enthalpies, tp, o);
+    getTriloop  (&triloopEntropies,   &triloopEnthalpies, &numTriloops, tp, o);
+    getTetraloop(&tetraloopEntropies, &tetraloopEnthalpies, &numTetraloops, tp, o);
+    /* getting the AT-penalties */
+    tableStartATS(AT_S, atpS);
+    tableStartATH(AT_H, atpH);
+
+    return 0;
+}
+
+
+
+//                    ***************   CProgParam_ThAl   ***********************
+
+/* Set default args */
+void
+CProgParam_ThAl::set_defaults( )
+{
+    this->type     = type::Any; /* thal_alignment_type THAL_ANY */
+    this->maxLoop  = MAX_LOOP;
+    this->mv       = 50; /* mM */
+    this->dv       = 0.0; /* mM */
+    this->dntp     = 0.8; /* mM */
+    this->dna_conc = 50; /* nM */
+    this->temp     = TEMP_KELVIN; /* Kelvin */
+    this->dimer    = 1; /* by default dimer structure is calculated */
+}
+
+/* Set default args for oligo */
+void
+CProgParam_ThAl::set_oligo_defaults( )
+{
+    this->type     = type::Any; /* thal_alignment_type THAL_ANY */
+    this->maxLoop  = MAX_LOOP;
+    this->mv       = 50; /* mM */
+    this->dv       = 0.0; /* mM */
+    this->dntp     = 0.0; /* mM the only difference !!!! */
+    this->dna_conc = 50; /* nM */
+    this->temp     = TEMP_KELVIN; /* Kelvin */
+    this->dimer    = 1; /* by default dimer structure is calculated */
+}
+
+
+//                    ***************   ThAl impl  ***********************
 
 /* table where bp-s enthalpies, that retrieve to the most stable Tm, are saved */
 #ifdef EnthalpyDPT
@@ -2517,61 +2578,6 @@ strcatc(char* str, char c)
    str[strlen(str)] = c;
 }
 
-/* Read the thermodynamic values (parameters) from the parameter files
-   in the directory specified by 'path'.  Return 0 on success and -1
-   on error. The thermodynamic values are stored in multiple static
-   variables. */
-int
-get_thermodynamic_values(const thal_parameters *tp, thal_results *o)
-{
-   if (setjmp(_jmp_buf) != 0) {
-      return -1;
-   }
-   getStack    ( stackEntropies,     stackEnthalpies,     tp, o);
-   /* verifyStackTable(stackEntropies, "entropy");
-      verifyStackTable(stackEnthalpies, "enthalpy"); */ /* this is for code debugging */
-   getStackint2( stackint2Entropies, stackint2Enthalpies, tp, o);
-   getDangle   ( dangleEntropies3,     dangleEnthalpies3,     dangleEntropies5,   dangleEnthalpies5, tp, o);
-   getLoop     ( hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
-                 interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
-   getTstack   ( tstackEntropies,     tstackEnthalpies, tp, o);
-   getTstack2  ( tstack2Entropies,    tstack2Enthalpies, tp, o);
-   getTriloop  (&triloopEntropies,   &triloopEnthalpies, &numTriloops, tp, o);
-   getTetraloop(&tetraloopEntropies, &tetraloopEnthalpies, &numTetraloops, tp, o);
-   /* getting the AT-penalties */
-   tableStartATS(AT_S, atpS);
-   tableStartATH(AT_H, atpH);
-
-   return 0;
-}
-
-/* Set default args */
-void
-CProgParam_ThAl::set_defaults( )
-{
-   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-   this->maxLoop  = MAX_LOOP;
-   this->mv       = 50; /* mM */
-   this->dv       = 0.0; /* mM */
-   this->dntp     = 0.8; /* mM */
-   this->dna_conc = 50; /* nM */
-   this->temp     = TEMP_KELVIN; /* Kelvin */
-   this->dimer    = 1; /* by default dimer structure is calculated */
-}
-
-/* Set default args for oligo */
-void
-CProgParam_ThAl::set_oligo_defaults( )
-{
-   this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-   this->maxLoop  = MAX_LOOP;
-   this->mv       = 50; /* mM */
-   this->dv       = 0.0; /* mM */
-   this->dntp     = 0.0; /* mM the only difference !!!! */
-   this->dna_conc = 50; /* nM */
-   this->temp     = TEMP_KELVIN; /* Kelvin */
-   this->dimer    = 1; /* by default dimer structure is calculated */
-}
 
 //     *******************    thal function  *****************************
 /* central method: execute all sub-methods for calculating secondary
