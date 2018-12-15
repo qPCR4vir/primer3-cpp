@@ -87,8 +87,8 @@ constexpr double TEMP_KELVIN = 310.15;
 /*** END CONSTANTS ***/
 
 
-/// The files from the directory primer3_config loaded as istrings.
-///   The actual parameters are static-global values in thal.c
+/// The files from the directory primer3_config loaded as istream.
+///   The actual parameters are static-global char[] values in thal.cc
 struct thal_parameters
  {
     using upis=std::unique_ptr<std::istream>;
