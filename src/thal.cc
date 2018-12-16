@@ -74,6 +74,8 @@
 
 #include "thal.hpp"
 
+extern const double _INFINITY;
+
 /*#define DEBUG*/
 #ifndef MIN_HRPN_LOOP
 #define MIN_HRPN_LOOP 3 /*  minimum size of hairpin loop */
@@ -105,6 +107,38 @@ const double _INFINITY = 1.0 / 0.0;
 #   endif
 # endif
 
+
+class thal_parameters::impl
+{
+    using upis=std::unique_ptr<std::istream>;
+
+    upis dangle_dh;
+    upis dangle_ds;
+    upis loops_dh;
+    upis loops_ds;
+    upis stack_dh;
+    upis stack_ds;
+    upis stackmm_dh;
+    upis stackmm_ds;
+    upis tetraloop_dh;
+    upis tetraloop_ds;
+    upis triloop_dh;
+    upis triloop_ds;
+    upis tstack_tm_inf_ds;
+    upis tstack_dh;
+    upis tstack2_dh;
+    upis tstack2_ds;
+
+    int set_defaults( );
+    // int set_default_thal_parameters(thal_parameters *a);
+    int load(const std::filesystem::path& dirname );
+    // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
+
+    int  parse_thermodynamic_values( );
+};
+
+/// The files from the directory primer3_config loaded as istream.
+///   The actual parameters are static-global char[] values in thal.cc
 /* matrix for allowed; bp 0 - no bp, watson crick bp - 1 */
 static const int BPI[5][5] =  {
         {0, 0, 0, 1, 0}, /* A, C, G, T, N; */
@@ -141,6 +175,11 @@ loop_prmtr triloopEntropies,     /* therm penalties for given triloop   seq-s */
         triloopEnthalpies,    /* therm penalties for given triloop   seq-s */
         tetraloopEntropies,   /* therm penalties for given tetraloop seq-s */
         tetraloopEnthalpies ; /* therm penalties for given tetraloop seq-s */
+
+struct thal_parameters
+{
+
+} ;
 
 
 static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction

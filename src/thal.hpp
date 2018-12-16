@@ -73,49 +73,29 @@
 #define THAL_MAX_SEQ   10000
 #endif
 
-/*** BEGIN CONSTANTS ***/
 
-extern const double _INFINITY;
 extern const double ABSOLUTE_ZERO;
-extern const int MAX_LOOP; /* the maximum size of loop that can be calculated;
-                              for larger loops formula must be implemented */
 extern const int MIN_LOOP;
-constexpr int  MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
+constexpr int    MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
 constexpr double TEMP_KELVIN = 310.15;
 
-
-/*** END CONSTANTS ***/
-
-
-/// The files from the directory primer3_config loaded as istream.
-///   The actual parameters are static-global char[] values in thal.cc
-struct thal_parameters
+/// handle the NN parameters for the thermodinamic-alignment
+class thal_parameters
  {
-    using upis=std::unique_ptr<std::istream>;
+   public:
+    thal_parameters(); ///< calls set_defaults( );
+    thal_parameters(const std::filesystem::path& dirname );  ///< calls load( );
+    ~thal_parameters();
 
-    upis dangle_dh;
-    upis dangle_ds;
-    upis loops_dh;
-    upis loops_ds;
-    upis stack_dh;
-    upis stack_ds;
-    upis stackmm_dh;
-    upis stackmm_ds;
-    upis tetraloop_dh;
-    upis tetraloop_ds;
-    upis triloop_dh;
-    upis triloop_ds;
-    upis tstack_tm_inf_ds;
-    upis tstack_dh;
-    upis tstack2_dh;
-    upis tstack2_ds;
-
+    /// set hard coded defaults
     int set_defaults( );
-    // int set_default_thal_parameters(thal_parameters *a);
-    int load(const std::filesystem::path& dirname );
-    // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
 
-    int  parse_thermodynamic_values( );
+    /// load and parse parameters from a directory
+    int load(const std::filesystem::path& dirname );
+
+   private:
+     class impl;
+     std::unique_ptr<impl> m_thal_p;
 } ;
 
 
