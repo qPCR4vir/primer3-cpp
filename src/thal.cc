@@ -1118,6 +1118,254 @@ class ThAl
         if(G2 < G1 && traceback == 0) {  S_H[0] = EntropyDPT(i, j);   S_H[1] = EnthalpyDPT(i, j); }
     }
 
+    /* calculates bulges and internal loops for dimer structures */
+    void calc_bulge_internal(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
+    {
+        int loopSize1 = ii - i - 1, loopSize2 = jj - j - 1, loopSize = loopSize1 + loopSize2-1;
+        double S= -1.0,  H = _INFINITY,   G1,G2;
+        double SH[2] =[ -1.0, _INFINITY];
+
+        int N, N_loop;
+        if(ii < jj)
+        {
+            N = ((2 * i)/2);
+            N_loop = N;
+            if(loopSize1 > 2) N_loop -= (loopSize1 - 2);
+            if(loopSize2 > 2) N_loop -= (loopSize2 - 2);
+        } else
+        {
+            N = ((2 * j)/2);
+            N_loop = 2 * jj;
+            if(loopSize1 > 2) N_loop -= (loopSize1 - 2);
+            if(loopSize2 > 2) N_loop -= (loopSize2 - 2);
+            N_loop = (N_loop/2) - 1;
+        }
+#ifdef DEBUG
+   if (ii <= i) std::cerr << "Error in calc_bulge_internal(): ii is not greater than i\n";
+   if (jj <= j) std::cerr << "Error in calc_bulge_internal(): jj is not greater than j\n";
+#endif
+#ifdef DEBUG
+   if (loopSize1 + loopSize2 > maxLoop)
+   {
+       std::cerr << "Error: calc_bulge_internal() called with loopSize1 + loopSize2 > maxLoop\n";
+       return;
+   }
+#endif
+#ifdef DEBUG
+   if (loopSize1 == 0 && loopSize2 == 0)
+   {
+      std::cerr << "Error: calc_bulge_internal() called with nonsense\n";
+      return;
+   }
+#endif
+        if((loopSize1 == 0 && loopSize2 > 0) ||          /* only bulges have to be considered */
+           (loopSize2 == 0 && loopSize1 > 0))
+        {
+            if(loopSize2 == 1 || loopSize1 == 1)    // bulge loop of size one is treated differently
+            {                                       //  the intervening nn-pair must be added
+                if((loopSize2 == 1 && loopSize1 == 0) ||  //  todo always true   !!??
+                   (loopSize2 == 0 && loopSize1 == 1)   )
+                {
+                    H = tp.bulgeLoopEnthalpies[loopSize] + tp.stackEnthalpies[numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
+                    S = tp.bulgeLoopEntropies [loopSize] + tp.stackEntropies [numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
+                }
+                if(isPositive(H) || isPositive(S))   { H = _INFINITY; S = -1.0; }
+                H += EnthalpyDPT(i, j);
+                S += EntropyDPT(i, j);
+                if(!isFinite(H))                     { H = _INFINITY; S = -1.0; }
+                RSH(ii,jj,SH);
+                G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
+                G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*((EntropyDPT(ii, jj)+SH[0]));
+
+                if((G1< G2) || (traceback==1))    {       EntropyEnthalpy[0] = S; EntropyEnthalpy[1] = H;  }
+
+            } else      /* we have _not_ implemented Jacobson-Stockaymayer equation; the maximum bulgeloop size is 30 */
+            {
+                H = tp.bulgeLoopEnthalpies[loopSize] + atPenaltyH(numSeq1[i ], numSeq2[j ])
+                                                     + atPenaltyH(numSeq1[ii], numSeq2[jj]);
+                H += EnthalpyDPT(i, j);
+
+                S = tp.bulgeLoopEntropies[loopSize] + atPenaltyS(numSeq1[i ], numSeq2[j ])
+                                                    + atPenaltyS(numSeq1[ii], numSeq2[jj]);
+                S += EntropyDPT(i, j);
+
+                if(!isFinite(H))                   {  H = _INFINITY;   S = -1.0;  }
+                if(isPositive(H) && isPositive(S)) {  H = _INFINITY;   S = -1.0;  }
+
+                RSH(ii,jj,SH);
+                G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
+                G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*(EntropyDPT(ii, jj)+SH[0]);
+
+                if(G1< G2 || (traceback==1))     { EntropyEnthalpy[0] = S;  EntropyEnthalpy[1] = H;  }
+
+            }
+        } else
+        if (loopSize1 == 1 && loopSize2 == 1)
+        {
+            S = tp.stackint2Entropies[numSeq1[i ]][numSeq1[i +1]][numSeq2[j ]][numSeq2[j +1]] +
+                tp.stackint2Entropies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]];
+            S += EntropyDPT(i, j);
+
+            H = tp.stackint2Enthalpies[numSeq1[i ]][numSeq1[i +1]][numSeq2[j ]][numSeq2[j +1]] +
+                tp.stackint2Enthalpies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]];
+            H += EnthalpyDPT(i, j);
+
+            if(!isFinite(H))                   { H = _INFINITY;  S = -1.0;   }
+            if(isPositive(H) && isPositive(S)) { H = _INFINITY;  S = -1.0;   }
+
+            RSH(ii,jj,SH);
+            G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
+            G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*(EntropyDPT(ii, jj)+SH[0]);
+
+            if((G1< G2) || traceback==1) {   EntropyEnthalpy[0] = S;  EntropyEnthalpy[1] = H;  }
+
+            return;
+        } else                                                   /* only internal loops */
+        {
+            H = tp.interiorLoopEnthalpies[loopSize] + tp.tstackEnthalpies[numSeq1[i ]][numSeq1[i +1]][numSeq2[j ]][numSeq2[j +1]]
+                                                    + tp.tstackEnthalpies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]]
+                                                    + (ILAH * abs(loopSize1 - loopSize2));
+            H += EnthalpyDPT(i, j);
+
+            S = tp.interiorLoopEntropies[loopSize] + tp.tstackEntropies[numSeq1[i ]][numSeq1[i +1]][numSeq2[j ]][numSeq2[j +1]]
+                                                   + tp.tstackEntropies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]]
+                                                   + (ILAS * abs(loopSize1 - loopSize2));
+            S += EntropyDPT(i, j);
+
+            if(!isFinite(H))                  {  H = _INFINITY;  S = -1.0;   }
+            if(isPositive(H) && isPositive(S)){  H = _INFINITY;  S = -1.0;   }
+
+            RSH(ii,jj,SH);
+            G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
+            G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*(EntropyDPT(ii, jj)+SH[0]);
+
+            if((G1< G2) || (traceback==1))   {  EntropyEnthalpy[0] = S;   EntropyEnthalpy[1] = H;  }
+        }
+        return;
+    }
+
+    /* calculates bulges and internal loops for monomer structures */
+    void calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
+    {
+        int loopSize1 = ii - i - 1, loopSize2 = jj - j - 1, loopSize = loopSize1 + loopSize2-1;
+        double T1 = -_INFINITY, T2 = -_INFINITY;
+        double S  = MinEntropy, H  = 0.0;                       /* int N, N_loop; Triinu, please review, see ori */
+
+        if (loopSize1 + loopSize2 > maxLoop) { EntropyEnthalpy[0] = -1.0; EntropyEnthalpy[1] = _INFINITY; return;  }
+
+#ifdef DEBUG
+   if (ii <= i)  std::cerr << "Error in calc_bulge_internal(): ii is not greater than i\n";
+   if (jj <= j)  std::cerr << "Error in calc_bulge_internal(): jj is not greater than j\n";
+   if (ii >= jj) std::cerr << "Error in calc_bulge_internal(): jj isn't greater than ii\n";
+   if ((i <= len1 && len1 < ii) || (jj <= len2 && len2 < j))
+      { EntropyEnthalpy[0] = -1.0; EntropyEnthalpy[1] = _INFINITY;  return;  }
+#endif
+#ifdef DEBUG
+   if (loopSize1 + loopSize2 > maxLoop)
+   {
+       std::cerr << "Error: calc_bulge_internal() called with loopSize1 + loopSize2 > maxLoop\n";
+       return;
+   }
+#endif
+#ifdef DEBUG
+   if (loopSize1 == 0 && loopSize2 == 0)
+   {
+      std::cerr << "Error: calc_bulge_internal() called with nonsense\n";
+      return;
+   }
+#endif
+#ifdef DEBUG
+   if (i  > len1)       i -= len1;
+   if (ii > len1)      ii -= len1;
+   if (j  > len2)       j -= len2;
+   if (jj > len2)      jj -= len2;
+#endif
+        if((loopSize1 == 0 && loopSize2 > 0) ||             /* only bulges have to be considered */
+           (loopSize2 == 0 && loopSize1 > 0))
+        {
+            if(loopSize2 == 1 || loopSize1 == 1)   // bulge loop of size one is treated differently
+            {                                      //  the intervening nn-pair must be added
+                if((loopSize2 == 1 && loopSize1 == 0) ||
+                   (loopSize2 == 0 && loopSize1 == 1)   )
+                {
+                    H = tp.bulgeLoopEnthalpies[loopSize] + tp.stackEnthalpies[numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
+                    S = tp.bulgeLoopEntropies [loopSize] + tp.stackEntropies [numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
+                }
+                                                             /* bulge koos otsaga, st bulge i,j-ni */
+                if(traceback!=1)     {  H += EnthalpyDPT(ii, jj);  S += EntropyDPT(ii, jj); }
+
+                if(!isFinite(H))     {  H = _INFINITY;   S = -1.0;   }
+
+                T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
+                T2 = (EnthalpyDPT(i, j) + dplx_init_H) / ((EntropyDPT(i, j)) + dplx_init_S + RC);
+
+                if((T1 > T2) || ((traceback && T1 >= T2) || traceback==1))
+                {                    EntropyEnthalpy[0] = S;  EntropyEnthalpy[1] = H;  }
+
+            } else /* we have _not_ implemented Jacobson-Stockaymayer equation; the maximum bulgeloop size is 30 */
+            {
+                H = tp.bulgeLoopEnthalpies[loopSize] + atPenaltyH(numSeq1[i ], numSeq2[j ])
+                                                     + atPenaltyH(numSeq1[ii], numSeq2[jj]);
+                if(traceback!=1)    H += EnthalpyDPT(ii, jj);    //  atpH[a][b]
+
+                S = tp.bulgeLoopEntropies[loopSize] + atPenaltyS(numSeq1[i ], numSeq2[j ])
+                                                    + atPenaltyS(numSeq1[ii], numSeq2[jj]);
+                if(traceback!=1)    S += EntropyDPT(ii, jj);
+
+                if(!isFinite(H)) {   H = _INFINITY;   S = -1.0;    }
+
+                T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
+                T2 = (EnthalpyDPT(i, j) + dplx_init_H) / (EntropyDPT(i, j) + dplx_init_S + RC);
+
+                if((T1 > T2) || ((traceback && T1 >= T2) || (traceback==1)))
+                {               EntropyEnthalpy[0] = S;      EntropyEnthalpy[1] = H;  }
+            }
+        } /* end of calculating bulges */
+        else
+        if (loopSize1 == 1 && loopSize2 == 1)              /* mismatch nearest neighbor parameters */
+        {
+            S = tp.stackint2Entropies[numSeq1[i ]][numSeq1[i +1]][numSeq2[j ]][numSeq2[j -1]] +
+                tp.stackint2Entropies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]];
+            if(traceback!=1)      S += EntropyDPT(ii, jj);
+
+            H = stackint2Enthalpies[numSeq1[i ]][numSeq1[i+1 ]][numSeq2[j ]][numSeq2[j-1 ]] +
+                stackint2Enthalpies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]];
+            if(traceback!=1)      H += EnthalpyDPT(ii, jj);
+
+            if(!isFinite(H)) {  H = _INFINITY; S = -1.0;  }
+
+            T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
+            T2 = (EnthalpyDPT(i, j) + dplx_init_H) / (EntropyDPT(i, j) + dplx_init_S + RC);
+
+            if((DBL_EQ(T1,T2) == 2) || traceback)
+            {
+                if((T1 > T2) || ((traceback && T1 >= T2) || traceback==1))
+                {              EntropyEnthalpy[0] = S;    EntropyEnthalpy[1] = H;    }
+            }
+            return;
+        } else /* only internal loops */
+        {
+            H = tp.interiorLoopEnthalpies[loopSize] + tp.tstackEnthalpies[numSeq1[i ]][numSeq1[i +1]][numSeq2[ j]][numSeq2[j -1]]
+                                                    + tp.tstackEnthalpies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]]
+                                                    + (ILAH * abs(loopSize1 - loopSize2));
+            if(traceback!=1)  H += EnthalpyDPT(ii, jj);
+
+            S = tp.interiorLoopEntropies[loopSize] + tp.tstackEntropies[numSeq1[i ]][numSeq1[i +1]][numSeq2[j ]][numSeq2[j -1]]
+                                                   + tp.tstackEntropies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]]
+                                                   + (ILAS * abs(loopSize1 - loopSize2));
+            if(traceback!=1)   S += EntropyDPT(ii, jj);
+
+            if(!isFinite(H))  {   H = _INFINITY;   S = -1.0;   }
+
+            T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
+            T2 = (EnthalpyDPT(i, j) + dplx_init_H) / ((EntropyDPT(i, j)) + dplx_init_S + RC);
+
+            if((T1 > T2) || ((traceback && T1 >= T2) || (traceback==1)))
+            {                         EntropyEnthalpy[0] = S; EntropyEnthalpy[1] = H;  }
+        }
+        return;
+    }
+
 public:
 
 };
@@ -1156,338 +1404,6 @@ static double Ststack(int,int); /* returns entropy value for terminal stack */
 static double Htstack(int,int); /* returns enthalpy value for terminal stack */
 
 
-
-
-
-
-
-
-
-
-
-/* calculates bulges and internal loops for dimer structures */
-static void 
-calc_bulge_internal(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
-{
-   int loopSize1, loopSize2, loopSize;
-   double S,H,G1,G2;
-   int N, N_loop;
-   double SH[2];
-   SH[0] = -1.0;
-   SH[1] = _INFINITY;
-   S = -1.0;
-   H = _INFINITY;
-   loopSize1 = ii - i - 1;
-   loopSize2 = jj - j - 1;
-   if(ii < jj) {
-      N = ((2 * i)/2);
-      N_loop = N;
-      if(loopSize1 > 2) N_loop -= (loopSize1 - 2);
-      if(loopSize2 > 2) N_loop -= (loopSize2 - 2);
-   } else {
-      N = ((2 * j)/2);
-      N_loop = 2 * jj;
-      if(loopSize1 > 2) N_loop -= (loopSize1 - 2);
-      if(loopSize2 > 2) N_loop -= (loopSize2 - 2);
-      N_loop = (N_loop/2) - 1;
-   }
-#ifdef DEBUG
-   if (ii <= i){
-      fputs("Error in calc_bulge_internal(): ii is not greater than i\n", stderr);
-   }
-   if (jj <= j)
-     fputs("Error in calc_bulge_internal(): jj is not greater than j\n", stderr);
-#endif
-
-#ifdef DEBUG
-   if (loopSize1 + loopSize2 > maxLoop) {
-      fputs("Error: calc_bulge_internal() called with loopSize1 + loopSize2 > maxLoop\n", stderr);
-      free(SH);
-      return;
-   }
-#endif
-#ifdef DEBUG
-   if (loopSize1 == 0 && loopSize2 == 0) {
-      fputs("Error: calc_bulge_internal() called with nonsense\n", stderr);
-      free(SH);
-      return;
-   }
-#endif
-   loopSize = loopSize1 + loopSize2-1;
-   if((loopSize1 == 0 && loopSize2 > 0) || (loopSize2 == 0 && loopSize1 > 0)) { /* only bulges have to be considered */
-      if(loopSize2 == 1 || loopSize1 == 1) { /* bulge loop of size one is treated differently
-                                              the intervening nn-pair must be added */
-
-         if((loopSize2 == 1 && loopSize1 == 0) || (loopSize2 == 0 && loopSize1 == 1)) {
-            H = bulgeLoopEnthalpies[loopSize] +
-              stackEnthalpies[numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
-            S = bulgeLoopEntropies[loopSize] +
-              stackEntropies[numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
-         }
-         if(isPositive(H) || isPositive(S)){
-            H = _INFINITY;
-            S = -1.0;
-         }
-         H += EnthalpyDPT(i, j);
-         S += EntropyDPT(i, j);
-         if(!isFinite(H)) {
-            H = _INFINITY;
-            S = -1.0;
-         }
-         RSH(ii,jj,SH);
-         G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
-         G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*((EntropyDPT(ii, jj)+SH[0]));
-         if((G1< G2) || (traceback==1)) {
-            EntropyEnthalpy[0] = S;
-            EntropyEnthalpy[1] = H;
-         }
-      } else { /* we have _not_ implemented Jacobson-Stockaymayer equation; the maximum bulgeloop size is 30 */
-
-         H = bulgeLoopEnthalpies[loopSize] + atPenaltyH(numSeq1[i], numSeq2[j]) + atPenaltyH(numSeq1[ii], numSeq2[jj]);
-         H += EnthalpyDPT(i, j);
-
-         S = bulgeLoopEntropies[loopSize] + atPenaltyS(numSeq1[i], numSeq2[j]) + atPenaltyS(numSeq1[ii], numSeq2[jj]);
-         S += EntropyDPT(i, j);
-         if(!isFinite(H)) {
-            H = _INFINITY;
-            S = -1.0;
-         }
-         if(isPositive(H) && isPositive(S)){ 
-            H = _INFINITY;
-            S = -1.0;
-         }
-        
-     RSH(ii,jj,SH);
-         G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
-         G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*(EntropyDPT(ii, jj)+SH[0]);
-         if(G1< G2 || (traceback==1)){
-            EntropyEnthalpy[0] = S;
-            EntropyEnthalpy[1] = H;
-         }
-         
-      }
-   } else if (loopSize1 == 1 && loopSize2 == 1) {
-      S = stackint2Entropies[numSeq1[i]][numSeq1[i+1]][numSeq2[j]][numSeq2[j+1]] +
-        stackint2Entropies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]];
-      S += EntropyDPT(i, j);
-
-      H = stackint2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq2[j]][numSeq2[j+1]] +
-        stackint2Enthalpies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]];
-      H += EnthalpyDPT(i, j);
-      if(!isFinite(H)) {
-         H = _INFINITY;
-         S = -1.0;
-      }
-      if(isPositive(H) && isPositive(S)){
-         H = _INFINITY;
-         S = -1.0;
-      }    
-     RSH(ii,jj,SH);
-         G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
-      G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*(EntropyDPT(ii, jj)+SH[0]);
-           if((G1< G2) || traceback==1) {
-            EntropyEnthalpy[0] = S;
-            EntropyEnthalpy[1] = H;
-         }
-      free(SH);
-      return;
-   } else { /* only internal loops */
-      H = interiorLoopEnthalpies[loopSize] + tstackEnthalpies[numSeq1[i]][numSeq1[i+1]][numSeq2[j]][numSeq2[j+1]] +
-        tstackEnthalpies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]]
-        + (ILAH * abs(loopSize1 - loopSize2));
-      H += EnthalpyDPT(i, j);
-
-      S = interiorLoopEntropies[loopSize] + tstackEntropies[numSeq1[i]][numSeq1[i+1]][numSeq2[j]][numSeq2[j+1]] +
-        tstackEntropies[numSeq2[jj]][numSeq2[jj-1]][numSeq1[ii]][numSeq1[ii-1]] + (ILAS * abs(loopSize1 - loopSize2));
-      S += EntropyDPT(i, j);
-      if(!isFinite(H)) {
-         H = _INFINITY;
-         S = -1.0;
-      }
-   if(isPositive(H) && isPositive(S)){ 
-         H = _INFINITY;
-         S = -1.0;
-      }
-     RSH(ii,jj,SH);
-     G1 = H+SH[1] -TEMP_KELVIN*(S+SH[0]);
-     G2 = EnthalpyDPT(ii, jj)+SH[1]-TEMP_KELVIN*(EntropyDPT(ii, jj)+SH[0]);
-     if((G1< G2) || (traceback==1)){
-             EntropyEnthalpy[0] = S;
-             EntropyEnthalpy[1] = H;
-      }
-   }
-   return;
-}
-/* calculates bulges and internal loops for monomer structures */
-static void 
-calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
-{
-   int loopSize1, loopSize2, loopSize;
-   double T1, T2;
-   double S,H;
-   /* int N, N_loop; Triinu, please review */
-   T1 = T2 = -_INFINITY;
-   S = MinEntropy;
-   H = 0.0;
-   loopSize1 = ii - i - 1;
-   loopSize2 = j - jj - 1;
-   if (loopSize1 + loopSize2 > maxLoop) {
-      EntropyEnthalpy[0] = -1.0;
-      EntropyEnthalpy[1] = _INFINITY;
-      return;
-   }
-   /* Triinu, please review the statements below. */
-   /* if(i < (len1 -j)) { */
-     /* N  = i; */
-      /* N_loop = (i - 1); */
-   /* } else { */
-     /* N = len1-j;  */
-      /* N_loop = len1 - j - 1; */
-   /* } */
-#ifdef DEBUG
-   if (ii <= i)
-     fputs("Error in calc_bulge_internal(): ii isn't greater than i\n", stderr);
-   if (jj >= j)
-     fputs("Error in calc_bulge_internal(): jj isn't less than j\n", stderr);
-   if (ii >= jj)
-     fputs("Error in calc_bulge_internal(): jj isn't greater than ii\n", stderr);
-
-   if ((i <= len1 && len1 < ii) || (jj <= len2 && len2 < j))  {
-      EntropyEnthalpy[0] = -1.0;
-      EntropyEnthalpy[1] = _INFINITY;
-      return;
-   }
-#endif
-
-#ifdef DEBUG
-   if (loopSize1 + loopSize2 > maxLoop) {
-      fputs("Error: calc_bulge_internal() called with loopSize1 + loopSize2 > maxLoop\n", stderr);
-      return;
-   }
-#endif
-#ifdef DEBUG
-   if (loopSize1 == 0 && loopSize2 == 0) {
-      fputs("Error: calc_bulge_internal() called with nonsense\n", stderr);
-      return;
-   }
-#endif
-
-#ifdef DEBUG
-   if (i > len1)
-     i -= len1;
-   if (ii > len1)
-     ii -= len1;
-   if (j > len2)
-     j -= len2;
-   if (jj > len2)
-     jj -= len2;
-#endif
-   loopSize = loopSize1 + loopSize2 -1; /* for indx only */
-   if((loopSize1 == 0 && loopSize2 > 0) || (loopSize2 == 0 && loopSize1 > 0)) { /* only bulges have to be considered */
-      if(loopSize2 == 1 || loopSize1 == 1) { /* bulge loop of size one is treated differently
-                                              the intervening nn-pair must be added */
-         if((loopSize2 == 1 && loopSize1 == 0) || (loopSize2 == 0 && loopSize1 == 1)) {
-            H = bulgeLoopEnthalpies[loopSize] +
-              stackEnthalpies[numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
-            S = bulgeLoopEntropies[loopSize] +
-              stackEntropies[numSeq1[i]][numSeq1[ii]][numSeq2[j]][numSeq2[jj]];
-         }
-         if(traceback!=1) {
-            H += EnthalpyDPT(ii, jj); /* bulge koos otsaga, st bulge i,j-ni */
-            S += EntropyDPT(ii, jj);
-         }
-
-         if(!isFinite(H)) {
-            H = _INFINITY;
-            S = -1.0;
-         }
-        
-         T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
-         T2 = (EnthalpyDPT(i, j) + dplx_init_H) / ((EntropyDPT(i, j)) + dplx_init_S + RC);
-
-         if((T1 > T2) || ((traceback && T1 >= T2) || traceback==1)) {
-            EntropyEnthalpy[0] = S;
-            EntropyEnthalpy[1] = H;
-         }
-
-      } else { /* we have _not_ implemented Jacobson-Stockaymayer equation; the maximum bulgeloop size is 30 */
-
-         H = bulgeLoopEnthalpies[loopSize] + atPenaltyH(numSeq1[i], numSeq2[j]) + atPenaltyH(numSeq1[ii], numSeq2[jj]);
-         if(traceback!=1)                      //  atpH[a][b]
-           H += EnthalpyDPT(ii, jj);
-
-         S = bulgeLoopEntropies[loopSize] + atPenaltyS(numSeq1[i], numSeq2[j]) + atPenaltyS(numSeq1[ii], numSeq2[jj]);
-         if(traceback!=1)
-           S += EntropyDPT(ii, jj);
-         if(!isFinite(H)) {
-            H = _INFINITY;
-            S = -1.0;
-         }
-          
-         T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
-         T2 = (EnthalpyDPT(i, j) + dplx_init_H) / (EntropyDPT(i, j) + dplx_init_S + RC);
-
-         if((T1 > T2) || ((traceback && T1 >= T2) || (traceback==1))) {
-            EntropyEnthalpy[0] = S;
-            EntropyEnthalpy[1] = H;
-         }
-      }
-   } /* end of calculating bulges */
-   else if (loopSize1 == 1 && loopSize2 == 1) {
-      /* mismatch nearest neighbor parameters */
-
-      S = stackint2Entropies[numSeq1[i]] [numSeq1[i+1 ]][numSeq2[j ]][numSeq2[j-1]] +
-          stackint2Entropies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]];
-      if(traceback!=1)
-        S += EntropyDPT(ii, jj);
-
-      H = stackint2Enthalpies[numSeq1[i ]][numSeq1[i+1 ]][numSeq2[j ]][numSeq2[j-1 ]] +
-          stackint2Enthalpies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]];
-      if(traceback!=1)
-        H += EnthalpyDPT(ii, jj);
-      if(!isFinite(H)) {
-         H = _INFINITY;
-         S = -1.0;
-      }
-    
-      T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
-      T2 = (EnthalpyDPT(i, j) + dplx_init_H) / (EntropyDPT(i, j) + dplx_init_S + RC);
-
-      if((DBL_EQ(T1,T2) == 2) || traceback) {
-         if((T1 > T2) || ((traceback && T1 >= T2) || traceback==1)) {
-            EntropyEnthalpy[0] = S;
-            EntropyEnthalpy[1] = H;
-         }
-      }
-      return;
-   } else { /* only internal loops */
-
-      H = interiorLoopEnthalpies[loopSize] + tstackEnthalpies[numSeq1[i ]][numSeq1[i+1 ]][numSeq2[ j]][numSeq2[j-1 ]] +
-                                             tstackEnthalpies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]]
-        + (ILAH * abs(loopSize1 - loopSize2));
-      if(traceback!=1)
-        H += EnthalpyDPT(ii, jj);
-
-      S = interiorLoopEntropies[loopSize] +
-              tstackEntropies[numSeq1[i ]][numSeq1[i+1 ]][numSeq2[j ]][numSeq2[j-1 ]] +
-              tstackEntropies[numSeq2[jj]][numSeq2[jj+1]][numSeq1[ii]][numSeq1[ii-1]] + (ILAS * abs(loopSize1 - loopSize2));
-      if(traceback!=1)
-        S += EntropyDPT(ii, jj);
-      if(!isFinite(H))
-      {
-         H = _INFINITY;
-         S = -1.0;
-      }
-    
-      T1 = (H + dplx_init_H) / ((S + dplx_init_S) + RC);
-      T2 = (EnthalpyDPT(i, j) + dplx_init_H) / ((EntropyDPT(i, j)) + dplx_init_S + RC);
-      if((T1 > T2) || ((traceback && T1 >= T2) || (traceback==1))) {
-         EntropyEnthalpy[0] = S;
-         EntropyEnthalpy[1] = H;
-      }
-   }
-   return;
-}
 
 static void 
 calc_terminal_bp(double temp) /* compute exterior loop */ /* terminal bp for monomer structure */
