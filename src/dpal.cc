@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "dpal.h"
+#include "dpal.hpp"
 
 /** We should probably remove the DPAL_FORGET_PATH compile-time option.
  * Efficiency now derives primarily from specialized versions of _dpal* for

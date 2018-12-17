@@ -46,21 +46,21 @@ ntdpal.exe   > ../test/dpal_output < ../test/dpal_input 2>../test/dpal_output-er
 echo Use git to see how the file dpal_output changed.
 
 echo .
-echo Test 3 :   # 'Default implementations + NO alignment 1'
-ntdpal.exe -s  > ../test/dpal_score_output < ../test/dpal_input 2>../test/dpal_score_output-err
+echo Test 5 :   # 'Force _dpal_generic'
+ntdpal.exe -s  > ../test/dpal_score_output < ../test/dpal_input 2>../test/dpal_score2_output-err"
 echo Use git to see how the file dpal_score_output changed.
-pause
 
 echo .
 echo Test 4 :   # 'Default implementations + NO alignment 2'
 ntdpal.exe -s  > ../test/dpal_long_score_output < ../test/dpal_long_input 2>../test/dpal_long_score_output-err
 echo Use git to see how the file dpal_long_score_output changed.
-
+pause
 
 echo .
-echo Test 5 :   # 'Force _dpal_generic'
-ntdpal.exe -s  > ../test/dpal_score_output < ../test/dpal_input 2>../test/dpal_score2_output-err"
+echo Test 3 :   # 'Default implementations + NO alignment 1'
+ntdpal.exe -s  > ../test/dpal_score_output < ../test/dpal_input 2>../test/dpal_score_output-err
 echo Use git to see how the file dpal_score_output changed.
+
 
 echo .
 echo now exit...

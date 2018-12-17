@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdio.h>
 #include <string.h>
-#include "format_output.h"
+#include "format_output.hpp"
 #include "libprimer3.h"
 
 #define FORWARD 1
