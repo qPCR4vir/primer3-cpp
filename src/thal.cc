@@ -1550,50 +1550,39 @@ class ThAl
         return S_max;
     }
 
-    /* returns thermodynamic value (S) for 5' dangling end */
-    static double
-    Sd5(int i, int j)
+    double Sd5(int i, int j)        /* returns thermodynamic value (S) for 5' dangling end */
     {
-        return dangleEntropies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
+        return tp.dangleEntropies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
     }
 
-    /* returns thermodynamic value (H) for 5' dangling end */
-    static double
-    Hd5(int i, int j)
+    double  Hd5(int i, int j)       /* returns thermodynamic value (H) for 5' dangling end */
     {
-        return dangleEnthalpies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
+        return tp.dangleEnthalpies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
     }
 
-    /* returns thermodynamic value (S) for 3' dangling end */
-    static double
-    Sd3(int i, int j)
+    double Sd3(int i, int j)        /* returns thermodynamic value (S) for 3' dangling end */
     {
-        return dangleEntropies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
+        return tp.dangleEntropies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
     }
 
-    /* returns thermodynamic value (H) for 3' dangling end */
-    static double
-    Hd3(int i, int j)
+    double  Hd3(int i, int j)       /* returns thermodynamic value (H) for 3' dangling end */
     {
-        return dangleEnthalpies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
+        return tp.dangleEnthalpies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
     }
 
-    /* returns entropy value for terminal stack */
-    static double
-    Ststack(int i, int j)
+    double Ststack(int i, int j)    /* returns entropy value for terminal stack */
     {
-        return tstack2Entropies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
+        return tp.tstack2Entropies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
     }
-/* returns enthalpy value for terminal stack */
-    static double
-    Htstack(int i, int j)
+
+    double Htstack(int i, int j)    /* returns enthalpy value for terminal stack */
     { /* e.g AG_TC 210 */
-        return tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
+        return tp.tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
     }
-/* Is sequence symmetrical */
-/* Return if string is symmetrical. Used only once only in thal. TODO change to use code */
-    static bool
-    symmetry_thermo(const seq& sq)
+
+    /* Is sequence symmetrical */
+    /* Return if string is symmetrical. Used only once only in thal. TODO change to use code */
+    static bool symmetry_thermo(const seq& sq)
     {
         int end= sq.length();
         if(end%2)  return false;   // symmetrical only if 2 | L
