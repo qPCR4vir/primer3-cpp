@@ -71,19 +71,11 @@
 #if defined(__sun)
 #include <ieeefp.h>
 #endif
+/*#define DEBUG*/   // todo ??
 
 #include "thal.hpp"
 
-extern const double _INFINITY;
-
-/*#define DEBUG*/
-#ifndef MIN_HRPN_LOOP
-#define MIN_HRPN_LOOP 3 /*  minimum size of hairpin loop */
-#endif
-
-#ifndef THAL_EXIT_ON_ERROR
-#define THAL_EXIT_ON_ERROR 0
-#endif
+extern const double _INFINITY;     // todo ??
 
 //     **************    thal_parameters    ************************
 
@@ -568,76 +560,130 @@ int thal_parameters::load (const std::filesystem::path& dirname )
 
 //                    ***************   CProgParam_ThAl   ***********************
 
-/* Set default args */
-void
-CProgParam_ThAl::set_defaults( )
-{
-    this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-    this->maxLoop  = MAX_LOOP;
-    this->mv       = 50; /* mM */
-    this->dv       = 0.0; /* mM */
-    this->dntp     = 0.8; /* mM */
-    this->dna_conc = 50; /* nM */
-    this->temp     = TEMP_KELVIN; /* Kelvin */
-    this->dimer    = 1; /* by default dimer structure is calculated */
-}
 
 /* Set default args for oligo */
 void
 CProgParam_ThAl::set_oligo_defaults( )
-{
-    this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-    this->maxLoop  = MAX_LOOP;
-    this->mv       = 50; /* mM */
-    this->dv       = 0.0; /* mM */
-    this->dntp     = 0.0; /* mM the only difference !!!! */
-    this->dna_conc = 50; /* nM */
-    this->temp     = TEMP_KELVIN; /* Kelvin */
-    this->dimer    = 1; /* by default dimer structure is calculated */
-}
-
 
 //                    ***************   ThAl impl  ***********************
-
-/* table where bp-s enthalpies, that retrieve to the most stable Tm, are saved */
-#ifdef EnthalpyDPT
-# undef EnthalpyDPT
-#endif
-#define EnthalpyDPT(i, j) enthalpyDPT[(j) + ((i-1)*len3) - (1)]
-
-/* table where bp-s entropies, that retrieve to the most stable Tm, are saved */
-#ifdef EntropyDPT
-# undef EntropyDPT
-#endif
-#define EntropyDPT(i, j) entropyDPT[(j) + ((i-1)*len3) - (1)]
-
-/* entropies of most stable hairpin terminal bp */
-#ifndef SEND5
-# define SEND5(i) send5[i]
+#ifndef MIN_HRPN_LOOP
+#define MIN_HRPN_LOOP 3 /*  minimum size of hairpin loop */
 #endif
 
-/* enthalpies of most stable hairpin terminal bp */
-#ifndef HEND5
-# define HEND5(i) hend5[i]
-#endif
+class ThAl
+{
+    static constexpr double  SMALL_NON_ZERO {0.000001};
+    static int DBL_EQ(double X, double Y) { return (X - Y) < SMALL_NON_ZERO ? 1 : 2; /* 1 when numbers are equal */}
+    static int max5(double a, double b, double c, double d, double e)
+    {
+        if(a > b &&
+           a > c &&
+           a > d &&
+           a > e    ) return 1;
+        else if(b > c &&
+                b > d &&
+                b > e    ) return 2;
+        else if(c > d &&
+                c > e    ) return 3;
+        else if(d > e    ) return 4;
+        else return 5;
+    }
 
-#define bpIndx(a, b) BPI[a][b] /* for traceing matrix BPI */
-#define atPenaltyS(a, b) atpS[a][b]
-#define atPenaltyH(a, b) atpH[a][b]
+    static constexpr double R    = 1.9872;          /* cal/Kmol */
+    static constexpr double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
+    static constexpr double ILAH = 0.0;             /* Internal Loop EntHalpy Asymmetry correction */
+    static constexpr double AT_H = 2200.0;          /* AT penalty */
+    static constexpr double AT_S = 6.9;             /* AT penalty */
+    static constexpr double MinEntropyCutoff = -2500.0; /* to filter out non-existing entropies */
+    static constexpr double MinEntropy       = -3224.0; /* initiation */
+    static constexpr double G2               = 0.0; /* structures w higher G are considered to be unstabile */
+    static constexpr ABSOLUTE_ZERO    = 273.15;
+    static constexpr int    MIN_LOOP         = 0;
 
-#define SMALL_NON_ZERO 0.000001
-#define DBL_EQ(X,Y) (((X) - (Y)) < (SMALL_NON_ZERO) ? (1) : (2)) /* 1 when numbers are equal */
+    /* w/o init not constant anymore, cause for unimolecular and bimolecular foldings there are different values */
+    double dplx_init_H;    /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
+    double dplx_init_S;    /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
+    double saltCorrection; /* value calculated by saltCorrectS,
+                                     includes correction for monovalent and divalent cations */
+    double RC;             /* universal gas constant multiplied w DNA conc - for melting temperature */
+    double SHleft;         /* var that helps to find str w highest melting temperature TODO not initialized !!!!??  */
+    int bestI, bestJ;      /* starting position of most stable str */
 
-static const double R    = 1.9872;          /* cal/Kmol */
-static const double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
-static const double ILAH = 0.0;             /* Internal Loop EntHalpy Asymmetry correction */
-static const double AT_H = 2200.0;          /* AT penalty */
-static const double AT_S = 6.9;             /* AT penalty */
-static const double MinEntropyCutoff = -2500.0; /* to filter out non-existing entropies */
-static const double MinEntropy       = -3224.0; /* initiation */
-static const double G2               = 0.0; /* structures w higher G are considered to be unstabile */
-       const double ABSOLUTE_ZERO    = 273.15;
-       const int    MIN_LOOP         = 0;
+    seq            oligo1,  oligo2;   /* inserted oligo sequenced */
+    seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
+    static int    len1, len2, len3;   /* length of sequense 1 and 2 */
+
+    struct tracer /* structure only for tracebacku - unimolecular str */
+    {
+        int i;
+        int j;
+        int mtrx; /* [0 1] EntropyDPT/EnthalpyDPT*/
+        struct tracer* next;
+    };
+    static void push(struct tracer** stack, int i, int j, int mtrx)
+    {
+        struct tracer* new_top;
+        new_top = (struct tracer*) safe_malloc(sizeof(struct tracer), o);
+        new_top->i = i;
+        new_top->j = j;
+        new_top->mtrx = mtrx;
+        new_top->next = *stack;
+        *stack = new_top;
+    }
+
+    std::vector<double> enthalpyDPT, entropyDPT,    /* DyProg matrix for values of enthalpy and entropy */
+                        send5,       hend5;         /* calc 5'  */
+
+    /// table where bp-s enthalpies, that retrieve to the most stable Tm, are saved
+    double & EnthalpyDPT(int i, int j)   {  return enthalpyDPT[(j) + ((i-1)*len3) - (1)];  }
+
+    /// table where bp-s entropies, that retrieve to the most stable Tm, are saved
+    double & EntropyDPT (int i, int j)   {  return entropyDPT [(j) + ((i-1)*len3) - (1)];  }
+
+    /// entropies of most stable hairpin terminal bp
+    double & SEND5 (int i)   {  return send5[i];  }
+
+    /// enthalpies of most stable hairpin terminal bp
+    double & HEND5 (int i)   {  return hend5[i];  }
+
+    bool & bpIndx (unsigned char a, unsigned char b)   {  return BPI[a][b];  } /* for traceing matrix BPI ?? */
+    double & atPenaltyS (unsigned char a, unsigned char b)   {  return atpS[a][b];  }
+    double & atPenaltyH (unsigned char a, unsigned char b)   {  return atpH[a][b];  }
+
+    void initMatrix() ///< initiates DPTables of entropy and enthalpy for dimer
+    {
+        for (int i = 1; i <= len1; ++i)                         // 1 !!
+        for (int j = 1; j <= len2; ++j)                         // 1 !!
+            if (bpIndx(numSeq1[i], numSeq2[j]) == 0)            // bpIndx(a, b) BPI[a][b]
+            {              //  mismatch
+                EnthalpyDPT(i, j) = _INFINITY;                  // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
+                EntropyDPT (i, j) = -1.0;
+            } else
+            {              // watson crick match
+                EnthalpyDPT(i, j) = 0.0;
+                EntropyDPT (i, j) = MinEntropy;
+            }
+    }
+
+    void initMatrix2() ///< initiates DPTables of entropy and enthalpy for monomer
+    {
+        for (int i = 1; i <= len1; ++i)                       // 1 !!
+        for (int j = i; j <= len2; ++j)                       // 1 !!
+            if ( j - i < MIN_HRPN_LOOP + 1 ||                 // i, j too near, loop too short
+                 (bpIndx(numSeq1[i], numSeq1[j]) == 0))        // bpIndx(a, b) BPI[a][b]
+            {            //  mismatch
+                EnthalpyDPT(i, j) = _INFINITY;                 // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
+                EntropyDPT (i, j) = -1.0;
+            } else
+            {              // watson crick match
+                EnthalpyDPT(i, j) = 0.0;
+                EntropyDPT (i, j) = MinEntropy;
+            }
+    }
+        public:
+
+};
+
 
 
 static void maxTM(int i, int j); /* finds max Tm while filling the dyn progr table using stacking S and stacking H (dimer) */
@@ -645,8 +691,6 @@ static void maxTM2(int i, int j); /* finds max Tm while filling the dyn progr ta
 
 static double Ss(int i, int j, int k); /* returns stack entropy */
 static double Hs(int i, int j, int k); /* returns stack enthalpy */
-
-static int max5(double, double, double, double, double);
 
 /* traceback for dimers */
 static void traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results* o);
@@ -665,8 +709,6 @@ static int equal(double a, double b);
 
 static void strcatc(char*, char);
 
-static void push(struct tracer**, int, int, int, thal_results*); /* to add elements to struct */
-
 /* terminal bp for monomer structure */
 static void calc_terminal_bp(double temp);
 
@@ -683,117 +725,8 @@ static double Sd3(int,int); /* returns thermodynamic value (S) for 3' dangling e
 static double Ststack(int,int); /* returns entropy value for terminal stack */
 static double Htstack(int,int); /* returns enthalpy value for terminal stack */
 
-static std::vector<double> send5, hend5;      /* calc 5'  */
-/* w/o init not constant anymore, cause for unimolecular and bimolecular foldings there are different values */
-static double dplx_init_H; /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
-static double dplx_init_S; /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
-static double saltCorrection; /* value calculated by saltCorrectS, includes correction for monovalent and divalent cations */
-static double RC; /* universal gas constant multiplied w DNA conc - for melting temperature */
-static double SHleft; /* var that helps to find str w highest melting temperature */
-static int bestI, bestJ; /* starting position of most stable str */
-
-static std::vector<double> enthalpyDPT, entropyDPT;    /* matrix for values of enthalpy and entropy */
-
-seq            oligo1,  oligo2;   /* inserted oligo sequenced */
-seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
-static int    len1, len2, len3;   /* length of sequense 1 and 2 */
-                                  /* 17.02.2009 int temponly;*/ /* print only temperature of the predicted structure */
 
 
-
-#define CHECK_ERROR(COND,MSG) if (COND) { strcpy(o->msg, MSG); errno = 0; longjmp(_jmp_buf, 1); }
-#define THAL_OOM_ERROR { strcpy(o->msg, "Out of memory"); errno = ENOMEM; longjmp(_jmp_buf, 1); }
-
-static jmp_buf _jmp_buf;
-/* memory stuff */
-
-static void* 
-safe_malloc(size_t n, thal_results *o)
-{
-   void* ptr;
-   if (!(ptr = malloc(n))) {
-#ifdef DEBUG
-      fputs("Error in malloc()\n", stderr);
-#endif
-      THAL_OOM_ERROR;
-   }
-   return ptr;
-}
-
-static void* 
-safe_realloc(void* ptr, size_t n, thal_results *o)
-{
-   ptr = realloc(ptr, n);
-   if (ptr == NULL) {
-#ifdef DEBUG
-      fputs("Error in realloc()\n", stderr);
-#endif
-      THAL_OOM_ERROR;
-   }
-   return ptr;
-}
-
-static int 
-max5(double a, double b, double c, double d, double e)
-{
-        if(a > b &&
-           a > c &&
-           a > d &&
-           a > e    ) return 1;
-   else if(b > c &&
-           b > d &&
-           b > e    ) return 2;
-   else if(c > d &&
-           c > e    ) return 3;
-   else if(d > e    ) return 4;
-   else return 5;
-}
-
-static void 
-push(struct tracer** stack, int i, int j, int mtrx, thal_results* o)
-{
-   struct tracer* new_top;
-   new_top = (struct tracer*) safe_malloc(sizeof(struct tracer), o);
-   new_top->i = i;
-   new_top->j = j;
-   new_top->mtrx = mtrx;
-   new_top->next = *stack;
-   *stack = new_top;
-}
-
-static void
-initMatrix() ///< initiates thermodynamic parameter tables of entropy and enthalpy for dimer
-{
-   int i, j;
-   for (i = 1; i <= len1; ++i) {                       // 1 !!
-      for (j = 1; j <= len2; ++j) {                    // 1 !!
-         if (bpIndx(numSeq1[i], numSeq2[j]) == 0)  {   // bpIndx(a, b) BPI[a][b] , mismatch
-            EnthalpyDPT(i, j) = _INFINITY;             // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
-            EntropyDPT(i, j) = -1.0;
-         } else {                                      // watson crick match
-            EnthalpyDPT(i, j) = 0.0;
-            EntropyDPT(i, j) = MinEntropy;
-         }
-      }
-   }
-}
-
-static void
-initMatrix2() ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
-{
-   int i, j;
-   for (i = 1; i <= len1; ++i)                           // 1 !!
-     for (j = i; j <= len2; ++j)                         // 1 !!
-       if ( j - i < MIN_HRPN_LOOP + 1 ||                 // i, j too near, loop too short
-           (bpIndx(numSeq1[i], numSeq1[j]) == 0))        // bpIndx(a, b) BPI[a][b] , mismatch
-       {
-          EnthalpyDPT(i, j) = _INFINITY;                 // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
-          EntropyDPT(i, j) = -1.0;
-       } else {
-          EnthalpyDPT(i, j) = 0.0;
-          EntropyDPT(i, j) = MinEntropy;
-       }
-}
 
 static void 
 fillMatrix(int maxLoop)                   /* calc-s thermod values into dynamic progr table (dimer) */
