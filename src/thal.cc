@@ -1415,6 +1415,810 @@ class ThAl
         }
     }
 
+    static double
+    END5_1(int i,int hs)
+    {
+        int k;
+        double max_tm; /* energy min */
+        double T1, T2;
+        double H, S;
+        double H_max, S_max;
+        H_max = H = _INFINITY;
+        S_max = S = -1.0;
+        T1 = T2 = -_INFINITY;
+        max_tm = -_INFINITY;
+        for(k = 0; k <= i - MIN_HRPN_LOOP - 2; ++k) {
+            T1 = (HEND5(k) + dplx_init_H) /(SEND5(k) + dplx_init_S + RC);
+            T2 = (0 + dplx_init_H) /(0 + dplx_init_S + RC);
+            if(T1 >= T2) {
+                H = HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i);
+                S = SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT(k + 1, i);
+                if(!isFinite(H) || H > 0 || S > 0) { /* H and S must be greater than 0 to avoid BS */
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) / (S + dplx_init_S + RC);
+            } else {
+                H = 0 + atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i);
+                S = 0 + atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT(k + 1, i);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) /(S + dplx_init_S + RC);
+            }
+            if(max_tm < T1) {
+                if(S > MinEntropyCutoff) {
+                    H_max = H;
+                    S_max = S;
+                    max_tm = T1;
+                }
+            }
+        }
+        if (hs == 1) return H_max;
+        return S_max;
+    }
+
+    static double
+    END5_2(int i,int hs)
+    {
+        int k;
+        double max_tm;
+        double T1, T2;
+        double H, S;
+        double H_max, S_max;
+        H_max = H = _INFINITY;
+        T1 = T2 = max_tm = -_INFINITY;
+        S_max = S = -1.0;
+        for (k = 0; k <= i - MIN_HRPN_LOOP - 3; ++k) {
+            T1 = (HEND5(k) + dplx_init_H) /(SEND5(k) + dplx_init_S + RC);
+            T2 = (0 + dplx_init_H) /(0 + dplx_init_S + RC);
+            if(T1 >= T2) {
+                H = HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i);
+                S = SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT(k + 2, i);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) / (S + dplx_init_S + RC);
+            } else {
+                H = 0 + atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i);
+                S = 0 + atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT(k + 2, i);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) /(S + dplx_init_S + RC);
+            }
+            if(max_tm < T1) {
+                if(S > MinEntropyCutoff) {
+                    H_max = H;
+                    S_max = S;
+                    max_tm = T1;
+                }
+            }
+        }
+        if (hs == 1) return H_max;
+        return S_max;
+    }
+
+    static double
+    END5_3(int i,int hs)
+    {
+        int k;
+        double max_tm;
+        double T1, T2;
+        double H, S;
+        double H_max, S_max;
+        H_max = H = _INFINITY;;
+        T1 = T2 = max_tm = -_INFINITY;
+        S_max = S = -1.0;
+        for (k = 0; k <= i - MIN_HRPN_LOOP - 3; ++k) {
+            T1 = (HEND5(k) + dplx_init_H) /(SEND5(k) + dplx_init_S + RC);
+            T2 = (0 + dplx_init_H) /(0 + dplx_init_S + RC);
+            if(T1 >= T2) {
+                H = HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1);
+                S = SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT(k + 1, i - 1);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) / (S + dplx_init_S + RC);
+            } else {
+                H = 0 + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1);
+                S = 0 + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT(k + 1, i - 1);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) /(S + dplx_init_S + RC);
+            }
+            if(max_tm < T1) {
+                if(S > MinEntropyCutoff) {
+                    H_max = H;
+                    S_max = S;
+                    max_tm = T1;
+                }
+            }
+        }
+        if (hs == 1) return H_max;
+        return S_max;
+    }
+
+    static double
+    END5_4(int i,int hs)
+    {
+        int k;
+        double max_tm;
+        double T1, T2;
+        double H, S;
+        double H_max, S_max;
+        H_max = H = _INFINITY;
+        T1 = T2 = max_tm = -_INFINITY;
+        S_max = S = -1.0;
+        for(k = 0; k <= i - MIN_HRPN_LOOP - 4; ++k) {
+            T1 = (HEND5(k) + dplx_init_H) /(SEND5(k) + dplx_init_S + RC);
+            T2 = (0 + dplx_init_H) /(0 + dplx_init_S + RC);
+            if(T1 >= T2) {
+                H = HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1);
+                S = SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT(k + 2, i - 1);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) / (S + dplx_init_S + RC);
+            } else {
+                H = 0 + atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1);
+                S = 0 + atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT(k + 2, i - 1);
+                if(!isFinite(H) || H > 0 || S > 0) {
+                    H = _INFINITY;
+                    S = -1.0;
+                }
+                T1 = (H + dplx_init_H) /(S + dplx_init_S + RC);
+            }
+            if(max_tm < T1) {
+                if(S > MinEntropyCutoff) {
+                    H_max = H;
+                    S_max = S;
+                    max_tm = T1;
+                }
+            }
+        }
+        if (hs == 1) return H_max;
+        return S_max;
+    }
+
+
+    static double
+    Sd5(int i, int j)
+    {
+        return dangleEntropies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
+    }
+
+    static double
+    Hd5(int i, int j)
+    {
+        return dangleEnthalpies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
+    }
+
+    static double
+    Sd3(int i, int j)
+    {
+        return dangleEntropies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
+    }
+
+    static double
+    Hd3(int i, int j)
+    {
+        return dangleEnthalpies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
+    }
+
+    static double
+    Ststack(int i, int j)
+    {
+        return tstack2Entropies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
+    }
+
+    static double
+    Htstack(int i, int j)
+    { /* e.g AG_TC 210 */
+        return tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
+    }
+/* Is sequence symmetrical */
+/* Return if string is symmetrical. Used only once only in thal. TODO change to use code */
+    static bool
+    symmetry_thermo(const seq& sq)
+    {
+        int end= sq.length();
+        if(end%2)  return false;   // symmetrical only if 2 | L
+        end--;
+        for(int i=0; i<end; i++, end-- )
+        {
+            char s=nt2code(sq[i]  );                  //  to avoid this
+            char e=nt2code(sq[end]);
+            if (! bpIndx(s,e) )  return false;
+        }
+        return true;
+    }
+
+    static void
+    tracebacku(std::vector<int>& bp, int maxLoop,thal_results* o) /* traceback for unimolecular structure */ /* traceback for hairpins */
+    {
+        int i, j;
+        i = j = 0;
+        int ii, jj, k;
+        struct tracer *top, *stack = NULL;
+        double* SH1;
+        double* SH2;
+        double* EntropyEnthalpy;
+        SH1 = (double*) safe_malloc(2 * sizeof(double), o);
+        SH2 = (double*) safe_malloc(2 * sizeof(double), o);
+        EntropyEnthalpy = (double*) safe_malloc(2 * sizeof(double), o);
+        push(&stack,len1, 0, 1, o);
+        while(stack) {
+            top = stack;
+            stack = stack->next;
+            i = top->i;
+            j = top->j;
+            if(top->mtrx==1) {
+                while (equal(SEND5(i), SEND5(i - 1)) && equal(HEND5(i), HEND5(i - 1))) /* if previous structure is the same as this one */
+                    --i;
+                if (i == 0)
+                    continue;
+                if (equal(SEND5(i), END5_1(i,2)) && equal(HEND5(i), END5_1(i,1))) {
+                    for (k = 0; k <= i - MIN_HRPN_LOOP - 2; ++k)
+                        if (equal(SEND5(i), atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT(k + 1, i)) &&
+                            equal(HEND5(i), atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i))) {
+                            push(&stack, k + 1, i,0, o);
+                            break;
+                        }
+                        else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT(k + 1, i)) &&
+                                 equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i))) {
+                            push(&stack, k + 1, i, 0, o);
+                            push(&stack, k, 0, 1, o);
+                            break;
+                        }
+                }
+                else if (equal(SEND5(i), END5_2(i,2)) && equal(HEND5(i), END5_2(i,1))) {
+                    for (k = 0; k <= i - MIN_HRPN_LOOP - 3; ++k)
+                        if (equal(SEND5(i), atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT(k + 2, i)) &&
+                            equal(HEND5(i), atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i))) {
+                            push(&stack, k + 2, i, 0, o);
+                            break;
+                        }
+                        else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT(k + 2, i)) &&
+                                 equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i))) {
+                            push(&stack, k + 2, i, 0, o);
+                            push(&stack, k, 0, 1, o);
+                            break;
+                        }
+                }
+                else if (equal(SEND5(i), END5_3(i,2)) && equal(HEND5(i), END5_3(i,1))) {
+                    for (k = 0; k <= i - MIN_HRPN_LOOP - 3; ++k)
+                        if (equal(SEND5(i), atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT(k + 1, i - 1))
+                            && equal(HEND5(i), atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1))) {
+                            push(&stack, k + 1, i - 1, 0, o);
+                            break;
+                        }
+                        else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT(k + 1, i - 1)) &&
+                                 equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1))) {
+                            push(&stack, k + 1, i - 1, 0, o); /* matrix 0  */
+                            push(&stack, k, 0, 1, o); /* matrix 3 */
+                            break;
+                        }
+                }
+                else if(equal(SEND5(i), END5_4(i,2)) && equal(HEND5(i), END5_4(i,1))) {
+                    for (k = 0; k <= i - MIN_HRPN_LOOP - 4; ++k)
+                        if (equal(SEND5(i), atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT(k + 2, i - 1)) &&
+                            equal(HEND5(i), atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1))) {
+                            push(&stack, k + 2, i - 1, 0, o);
+                            break;
+                        }
+                        else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT(k + 2, i - 1)) &&
+                                 equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1)) ) {
+                            push(&stack, k + 2, i - 1, 0, o);
+                            push(&stack, k, 0, 1, o);
+                            break;
+                        }
+                }
+            }
+            else if(top->mtrx==0) {
+                bp[i - 1] = j;
+                bp[j - 1] = i;
+                SH1[0] = -1.0;
+                SH1[1] = _INFINITY;
+                calc_hairpin(i, j, SH1, 1); /* 1 means that we use this method in traceback */
+                SH2[0] = -1.0;
+                SH2[1] = _INFINITY;
+                CBI(i,j,SH2,2,maxLoop);
+                if (equal(EntropyDPT(i, j), Ss(i, j, 2) + EntropyDPT(i + 1, j - 1)) &&
+                    equal(EnthalpyDPT(i, j), Hs(i, j, 2) + EnthalpyDPT(i + 1, j - 1))) {
+                    push(&stack, i + 1, j - 1, 0, o);
+                }
+                else if (equal(EntropyDPT(i, j), SH1[0]) && equal(EnthalpyDPT(i,j), SH1[1]));
+                else if (equal(EntropyDPT(i, j), SH2[0]) && equal(EnthalpyDPT(i, j), SH2[1])) {
+                    int d, done;
+                    for (done = 0, d = j - i - 3; d >= MIN_HRPN_LOOP + 1 && d >= j - i - 2 - maxLoop && !done; --d)
+                        for (ii = i + 1; ii < j - d; ++ii) {
+                            jj = d + ii;
+                            EntropyEnthalpy[0] = -1.0;
+                            EntropyEnthalpy[1] = _INFINITY;
+                            calc_bulge_internal2(i, j, ii, jj,EntropyEnthalpy,1,maxLoop);
+                            if (equal(EntropyDPT(i, j), EntropyEnthalpy[0] + EntropyDPT(ii, jj)) &&
+                                equal(EnthalpyDPT(i, j), EntropyEnthalpy[1] + EnthalpyDPT(ii, jj))) {
+                                push(&stack, ii, jj, 0, o);
+                                ++done;
+                                break;
+                            }
+                        }
+                } else {
+                }
+            }
+            free(top);
+        }
+        free(SH1);
+        free(SH2);
+        free(EntropyEnthalpy);
+    }
+
+/* traceback for dimers */
+    static void
+    traceback(int i, int j, double RT, std::vector<int>&  ps1, std::vector<int>& ps2, int maxLoop, thal_results* o)
+    {
+        int d, ii, jj, done;
+        double SH[2];
+        ps1[i - 1] = j;
+        ps2[j - 1] = i;
+        while(1)
+        {
+            SH[0] = -1.0;
+            SH[1] = _INFINITY;
+            LSH(i,j,SH);
+            if(equal(EntropyDPT(i,j),SH[0]) && equal(EnthalpyDPT(i,j),SH[1])) {
+                break;
+            }
+            done = 0;
+            if (i > 1 && j > 1 && equal(EntropyDPT (i,j), Ss(i - 1, j - 1, 1) + EntropyDPT (i - 1, j - 1)) &&
+                equal(EnthalpyDPT(i,j), Hs(i - 1, j - 1, 1) + EnthalpyDPT(i - 1, j - 1)))
+            {
+                i = i - 1;
+                j = j - 1;
+                ps1[i - 1] = j;
+                ps2[j - 1] = i;
+                done = 1;
+            }
+            for (d = 3; !done && d <= maxLoop + 2; ++d) {
+                ii = i - 1;
+                jj = -ii - d + (j + i);
+                if (jj < 1) {
+                    ii -= abs(jj-1);
+                    jj = 1;
+                }
+                for (; !done && ii > 0 && jj < j; --ii, ++jj) {
+                    SH[0] = -1.0;
+                    SH[1] = _INFINITY;
+                    calc_bulge_internal(ii, jj, i, j, SH,1,maxLoop);
+                    if (equal(EntropyDPT (i, j), SH[0]) &&
+                        equal(EnthalpyDPT(i, j), SH[1]))
+                    {
+                        i = ii;
+                        j = jj;
+                        ps1[i - 1] = j;
+                        ps2[j - 1] = i;
+                        done = 1;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    char *
+    drawDimer(std::vector<int>& ps1, std::vector<int>& ps2, double temp, double H, double S, const CProgParam_ThAl::mode mode, double t37, thal_results *o)
+    {
+        int  ret_space = 0;
+        int ret_nr, ret_pr_once;
+        std::string ret_str[4];
+        int i, j, k, numSS1, numSS2, N;
+        char* duplex[4];
+        double G, t;
+        t = G = 0;
+        if (!isFinite(temp)){
+            if((mode != THL_FAST) && (mode != THL_DEBUG_F) && (mode != THL_STRUCT)) {
+                printf("No predicted secondary structures for given sequences\n");
+            }
+            o->temp = 0.0; /* lets use generalization here; this should rather be very negative value */
+            strcpy(o->msg, "No predicted sec struc for given seq");
+            return NULL;
+        } else {
+            N=0;
+            for(i=0;i<len1;i++){
+                if(ps1[i]>0) ++N;
+            }
+            for(i=0;i<len2;i++) {
+                if(ps2[i]>0) ++N;
+            }
+            N = (N/2) -1;
+            t = ((H) / (S + (N * saltCorrection) + RC)) - ABSOLUTE_ZERO;
+            if((mode != THL_FAST) && (mode != THL_DEBUG_F)) {
+                G = (H) - (t37 * (S + (N * saltCorrection)));
+                S = S + (N * saltCorrection);
+                o->temp = (double) t;
+                /* maybe user does not need as precise as that */
+                /* printf("Thermodynamical values:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\tN = %d, SaltC=%f, RC=%f\n",
+                       len1, (double) S, (double) H, (double) G, (double) t, (int) N, saltCorrection, RC); */
+                if (mode != THL_STRUCT) {
+                    printf("Calculated thermodynamical parameters for dimer:\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
+                           (double) S, (double) H, (double) G, (double) t);
+                } else {
+                    sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
+                            (double) t, (double) G, (double) H, (double) S);
+                }
+            } else {
+                o->temp = (double) t;
+                return NULL;
+            }
+        }
+
+        duplex[0] = (char*) safe_malloc(len1 + len2 + 1, o);
+        duplex[1] = (char*) safe_malloc(len1 + len2 + 1, o);
+        duplex[2] = (char*) safe_malloc(len1 + len2 + 1, o);
+        duplex[3] = (char*) safe_malloc(len1 + len2 + 1, o);
+        duplex[0][0] = duplex[1][0] = duplex[2][0] = duplex[3][0] = 0;
+
+        i = 0;
+        numSS1 = 0;
+        while (ps1[i++] == 0) ++numSS1;
+        j = 0;
+        numSS2 = 0;
+        while (ps2[j++] == 0) ++numSS2;
+
+        if (numSS1 >= numSS2){
+            for (i = 0; i < numSS1; ++i) {
+                strcatc(duplex[0], oligo1[i]);
+                strcatc(duplex[1], ' ');
+                strcatc(duplex[2], ' ');
+            }
+            for (j = 0; j < numSS1 - numSS2; ++j) strcatc(duplex[3], ' ');
+            for (j = 0; j < numSS2; ++j) strcatc(duplex[3], oligo2[j]);
+        } else {
+            for (j = 0; j < numSS2; ++j) {
+                strcatc(duplex[3], oligo2[j]);
+                strcatc(duplex[1], ' ');
+                strcatc(duplex[2], ' ');
+            }
+            for (i = 0; i < numSS2 - numSS1; ++i)
+                strcatc(duplex[0], ' ');
+            for (i = 0; i < numSS1; ++i)
+                strcatc(duplex[0], oligo1[i]);
+        }
+        i = numSS1 + 1;
+        j = numSS2 + 1;
+
+        while (i <= len1) {
+            while (i <= len1 && ps1[i - 1] != 0 && j <= len2 && ps2[j - 1] != 0) {
+                strcatc(duplex[0], ' ');
+                strcatc(duplex[1], oligo1[i - 1]);
+                strcatc(duplex[2], oligo2[j - 1]);
+                strcatc(duplex[3], ' ');
+                ++i;
+                ++j;
+            }
+            numSS1 = 0;
+            while (i <= len1 && ps1[i - 1] == 0) {
+                strcatc(duplex[0], oligo1[i - 1]);
+                strcatc(duplex[1], ' ');
+                ++numSS1;
+                ++i;
+            }
+            numSS2 = 0;
+            while (j <= len2 && ps2[j - 1] == 0) {
+                strcatc(duplex[2], ' ');
+                strcatc(duplex[3], oligo2[j - 1]);
+                ++numSS2;
+                ++j;
+            }
+            if (numSS1 < numSS2)
+                for (k = 0; k < numSS2 - numSS1; ++k) {
+                    strcatc(duplex[0], '-');
+                    strcatc(duplex[1], ' ');
+                }
+            else if (numSS1 > numSS2)
+                for (k = 0; k < numSS1 - numSS2; ++k) {
+                    strcatc(duplex[2], ' ');
+                    strcatc(duplex[3], '-');
+                }
+        }
+        if ((mode == THL_GENERAL) || (mode == THL_DEBUG)) {
+            printf("SEQ\t");
+            printf("%s\n", duplex[0]);
+            printf("SEQ\t");
+            printf("%s\n", duplex[1]);
+            printf("STR\t");
+            printf("%s\n", duplex[2]);
+            printf("STR\t");
+            printf("%s\n", duplex[3]);
+        }
+        if (mode == THL_STRUCT) {
+            ret_str[3] = NULL;
+            ret_str[0] = (char*) safe_malloc(len1 + len2 + 10, o);
+            ret_str[1] = (char*) safe_malloc(len1 + len2 + 10, o);
+            ret_str[2] = (char*) safe_malloc(len1 + len2 + 10, o);
+            ret_str[0][0] = ret_str[1][0] = ret_str[2][0] = '\0';
+
+            /* Join top primer */
+            strcpy(ret_str[0], "   ");
+            strcat(ret_str[0], duplex[0]);
+            ret_nr = 0;
+            while (duplex[1][ret_nr] != '\0') {
+                if (duplex[1][ret_nr] == 'A' || duplex[1][ret_nr] == 'T' ||
+                    duplex[1][ret_nr] == 'C' || duplex[1][ret_nr] == 'G' ||
+                    duplex[1][ret_nr] == '-') {
+                    ret_str[0][ret_nr + 3] = duplex[1][ret_nr];
+                }
+                ret_nr++;
+            }
+            if (strlen(duplex[1]) > strlen(duplex[0])) {
+                ret_str[0][strlen(duplex[1]) + 3] = '\0';
+            }
+            /* Clean Ends */
+            ret_nr = strlen(ret_str[0]) - 1;
+            while (ret_nr > 0 && (ret_str[0][ret_nr] == ' ' || ret_str[0][ret_nr] == '-')) {
+                ret_str[0][ret_nr--] = '\0';
+            }
+            /* Write the 5' */
+            ret_nr = 3;
+            ret_pr_once = 1;
+            while (ret_str[0][ret_nr] != '\0' && ret_pr_once == 1) {
+                if (ret_str[0][ret_nr] == 'A' || ret_str[0][ret_nr] == 'T' ||
+                    ret_str[0][ret_nr] == 'C' || ret_str[0][ret_nr] == 'G' ||
+                    ret_str[0][ret_nr] == '-') {
+                    ret_str[0][ret_nr - 3] = '5';
+                    ret_str[0][ret_nr - 2] = '\'';
+                    ret_pr_once = 0;
+                }
+                ret_nr++;
+            }
+
+            /* Create the align tics */
+            strcpy(ret_str[1], "     ");
+            for (i = 0 ; i < strlen(duplex[1]) ; i++) {
+                if (duplex[1][i] == 'A' || duplex[1][i] == 'T' ||
+                    duplex[1][i] == 'C' || duplex[1][i] == 'G' ) {
+                    ret_str[1][i + 3] = '|';
+                } else {
+                    ret_str[1][i + 3] = ' ';
+                }
+                ret_str[1][i + 4] = '\0';
+            }
+            /* Clean Ends */
+            ret_nr = strlen(ret_str[1]) - 1;
+            while (ret_nr > 0 && ret_str[1][ret_nr] == ' ') {
+                ret_str[1][ret_nr--] = '\0';
+            }
+            /* Join bottom primer */
+            strcpy(ret_str[2], "   ");
+            strcat(ret_str[2], duplex[2]);
+            ret_nr = 0;
+            while (duplex[3][ret_nr] != '\0') {
+                if (duplex[3][ret_nr] == 'A' || duplex[3][ret_nr] == 'T' ||
+                    duplex[3][ret_nr] == 'C' || duplex[3][ret_nr] == 'G' ||
+                    duplex[3][ret_nr] == '-') {
+                    ret_str[2][ret_nr + 3] = duplex[3][ret_nr];
+                }
+                ret_nr++;
+            }
+            if (strlen(duplex[3]) > strlen(duplex[2])) {
+                ret_str[2][strlen(duplex[3]) + 3] = '\0';
+            }
+            /* Clean Ends */
+            ret_nr = strlen(ret_str[2]) - 1;
+            while (ret_nr > 0 && (ret_str[2][ret_nr] == ' ' || ret_str[2][ret_nr] == '-')) {
+                ret_str[2][ret_nr--] = '\0';
+            }
+            /* Write the 5' */
+            ret_nr = 3;
+            ret_pr_once = 1;
+            while (ret_str[2][ret_nr] != '\0' && ret_pr_once == 1) {
+                if (ret_str[2][ret_nr] == 'A' || ret_str[2][ret_nr] == 'T' ||
+                    ret_str[2][ret_nr] == 'C' || ret_str[2][ret_nr] == 'G' ||
+                    ret_str[2][ret_nr] == '-') {
+                    ret_str[2][ret_nr - 3] = '3';
+                    ret_str[2][ret_nr - 2] = '\'';
+                    ret_pr_once = 0;
+                }
+                ret_nr++;
+            }
+
+            save_append_string(&ret_str[3], &ret_space, o, ret_para);
+            save_append_string(&ret_str[3], &ret_space, o, ret_str[0]);
+            save_append_string(&ret_str[3], &ret_space, o, " 3\'\\n");
+            save_append_string(&ret_str[3], &ret_space, o, ret_str[1]);
+            save_append_string(&ret_str[3], &ret_space, o, "\\n");
+            save_append_string(&ret_str[3], &ret_space, o, ret_str[2]);
+            save_append_string(&ret_str[3], &ret_space, o, " 5\'\\n");
+
+
+/*
+     save_append_string(&ret_str, &ret_space, o, "SEQ ");
+     save_append_string(&ret_str, &ret_space, o, duplex[0]);
+     save_append_string(&ret_str, &ret_space, o, "\\nSEQ ");
+     save_append_string(&ret_str, &ret_space, o, duplex[1]);
+     save_append_string(&ret_str, &ret_space, o, "\\nSTR ");
+     save_append_string(&ret_str, &ret_space, o, duplex[2]);
+     save_append_string(&ret_str, &ret_space, o, "\\nSTR ");
+     save_append_string(&ret_str, &ret_space, o, duplex[3]);
+     save_append_string(&ret_str, &ret_space, o, "\\n");
+*/
+            ret_ptr = (char *) safe_malloc(strlen(ret_str[3]) + 1, o);
+            strcpy(ret_ptr, ret_str[3]);
+            if (ret_str[3]) {
+                free(ret_str[3]);
+            }
+            free(ret_str[0]);
+            free(ret_str[1]);
+            free(ret_str[2]);
+        }
+        free(duplex[0]);
+        free(duplex[1]);
+        free(duplex[2]);
+        free(duplex[3]);
+
+        return ret_ptr;
+    }
+/* prints ascii output of hairpin structure */
+    std::string
+    drawHairpin(std::vector<int>& bp, double mh, double ms,
+                const CProgParam_ThAl::mode mode, double temp, thal_results *o)
+    {
+        int  ret_space = 0;
+        std::string ret_str;
+        int ret_last_l, ret_first_r, ret_center, ret_left_end, ret_right_start, ret_left_len, ret_right_len;
+        int ret_add_sp_l, ret_add_sp_r;
+        char ret_center_char;
+        /* Plain text */
+        int i, N;
+        N = 0;
+        double mg, t;
+        if (!isFinite(ms) || !isFinite(mh)) {
+            if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
+            {
+                if (mode != CProgParam_ThAl::mode::STRUCT)
+                {
+                    printf("0\tdS = %g\tdH = %g\tinf\tinf\n", (double) ms,(double) mh);
+#ifdef DEBUG
+                    fputs("No temperature could be calculated\n",stderr);
+#endif
+                }
+            } else
+            {
+                o->temp = 0.0;       /* lets use generalization here */
+                strcpy(o->msg, "No predicted sec struc for given seq\n");
+            }
+        } else
+        {
+            if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
+            {
+                for (i = 1; i < len1; ++i)
+                {
+                    if(bp[i-1] > 0) N++;
+                }
+            } else {
+                for (i = 1; i < len1; ++i)     // both branch equal ???
+                {
+                    if(bp[i-1] > 0) N++;
+                }
+            }
+            t = (mh / (ms + (((N/2)-1) * saltCorrection))) - ABSOLUTE_ZERO;
+
+            if((mode != CProgParam_ThAl::mode::FAST) &&
+               (mode != CProgParam_ThAl::mode::DEBUG_F))
+            {
+                mg = mh - (temp * (ms + (((N/2)-1) * saltCorrection)));
+                ms = ms + (((N/2)-1) * saltCorrection);
+                o->temp = (double) t;
+
+                if (mode != CProgParam_ThAl::mode::STRUCT)
+                {
+                    printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
+                           len1, (double) ms, (double) mh, (double) mg, (double) t);
+                } else
+                {
+                    sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
+                            (double) t, (double) mg, (double) mh, (double) ms);
+                }
+            }
+            else
+            {
+                o->temp = (double) t;
+                return {};
+            }
+        }
+        /* plain-text output */
+        std::string asciiRow (len1, '0');
+        for(i = 1; i < len1+1; ++i) {
+            if(bp[i-1] == 0) {
+                asciiRow[(i-1)] = '-';
+            } else {
+                if(bp[i-1] > (i-1)) {
+                    asciiRow[(bp[i-1]-1)]='\\';
+                } else  {
+                    asciiRow[(bp[i-1]-1)]='/';
+                }
+            }
+        }
+        if ((mode == CProgParam_ThAl::mode::GENERAL) || (mode == CProgParam_ThAl::mode::DEBUG))
+        {
+            printf("SEQ\t");
+            for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
+            printf("\nSTR\t%s\n", oligo1);
+        }
+        if (mode == CProgParam_ThAl::mode::STRUCT) {
+            ret_str = {};
+
+            //save_append_string(&ret_str, &ret_space, o, ret_para);
+
+            ret_last_l = -1;
+            ret_first_r = -1;
+            ret_center_char = '|';
+            for(i = 0; i < len1; ++i)
+            {
+                if ( asciiRow[i] == '/')          ret_last_l  = i;
+                if ((ret_first_r == -1 ) &&
+                    (asciiRow[i] == '\\'))        ret_first_r = i;
+            }
+            ret_center = ret_first_r - ret_last_l;
+
+            if (ret_center % 2 == 0)        /* ret_center is odd */
+            {
+                ret_left_end    = ret_last_l + (ret_first_r - ret_last_l) / 2 - 1;
+                ret_center_char = (char) oligo1[ret_left_end + 1];
+                ret_right_start = ret_left_end + 2;
+            }
+            else
+            {                                 /* ret_center is even */
+                ret_left_end    = ret_last_l + (ret_first_r - ret_last_l - 1) / 2;
+                ret_right_start = ret_left_end + 1;
+            }
+
+            ret_left_len  = ret_left_end + 1;
+            ret_right_len = len1 - ret_right_start;
+            ret_add_sp_l  = 0;
+            ret_add_sp_r  = 0;
+
+            if (ret_left_len > ret_right_len)       ret_add_sp_r = ret_left_len  - ret_right_len + 1;
+            if (ret_right_len > ret_left_len)       ret_add_sp_l = ret_right_len - ret_left_len;
+
+            for (i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ; // save_append_char(&ret_str, &ret_space, o, ' ');
+            ret_str += "5' " ;                                     // save_append_string(&ret_str, &ret_space, o, "5' ");
+            for (i = 0 ; i < ret_left_len ; i++)  ret_str += (char) oligo1[i] ;
+            ret_str += "U+2510\\n   " ;
+            for (i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ;
+            for (i = 0 ; i < ret_left_len ; i++)
+            {
+                if (asciiRow[i] == '/')             ret_str += '|' ;
+                else                                ret_str += ' ' ;
+            }
+            if (ret_center_char == '|' )          ret_str += "U+2502" ;
+            else                                  ret_str += ret_center_char ;
+            ret_str += "\\n" ;
+            for (i = 0 ; i < ret_add_sp_r - 1 ; i++)       ret_str += ' ' ;
+            ret_str += "3' " ;
+            for (i = len1 ; i > ret_right_start - 1; i--)  ret_str += (char) oligo1[i] ;
+            ret_str += "U+2518\\n" ;
+/*
+     save_append_string(&ret_str, &ret_space, o, "SEQ ");
+     for(i = 0; i < len1; ++i) {
+       save_append_char(&ret_str, &ret_space, o, asciiRow[i]);
+     }
+     save_append_string(&ret_str, &ret_space, o, "\\nSTR ");
+     save_append_string(&ret_str, &ret_space, o, (const char*) oligo1);
+     save_append_string(&ret_str, &ret_space, o, "\\n");
+*/
+        }
+        return ret_str;
+    }
+
 public:
 
 };
