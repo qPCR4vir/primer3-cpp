@@ -1488,41 +1488,32 @@ class ThAl
     static double
     END5_3(int i,int hs)
     {
-        int k;
-        double max_tm;
-        double T1, T2;
-        double H, S;
-        double H_max, S_max;
-        H_max = H = _INFINITY;;
-        T1 = T2 = max_tm = -_INFINITY;
-        S_max = S = -1.0;
-        for (k = 0; k <= i - MIN_HRPN_LOOP - 3; ++k) {
+        double max_tm = -_INFINITY;                          /* energy min */
+        double T1     = -_INFINITY,      T2    = -_INFINITY;
+        double H      = _INFINITY,       S     = -1.0;
+        double H_max  = _INFINITY,       S_max = -1.0;
+
+        for (int k = 0; k <= i - MIN_HRPN_LOOP - 3; ++k)
+        {
             T1 = (HEND5(k) + dplx_init_H) /(SEND5(k) + dplx_init_S + RC);
             T2 = (0 + dplx_init_H) /(0 + dplx_init_S + RC);
-            if(T1 >= T2) {
+            if(T1 >= T2)
+            {
                 H = HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1);
-                S = SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT(k + 1, i - 1);
-                if(!isFinite(H) || H > 0 || S > 0) {
-                    H = _INFINITY;
-                    S = -1.0;
-                }
+                S = SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT (k + 1, i - 1);
+
+                if(!isFinite(H) || H > 0 || S > 0) { H = _INFINITY; S = -1.0; }
                 T1 = (H + dplx_init_H) / (S + dplx_init_S + RC);
-            } else {
+            } else
+            {
                 H = 0 + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1);
-                S = 0 + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT(k + 1, i - 1);
-                if(!isFinite(H) || H > 0 || S > 0) {
-                    H = _INFINITY;
-                    S = -1.0;
-                }
+                S = 0 + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT (k + 1, i - 1);
+
+                if(!isFinite(H) || H > 0 || S > 0) { H = _INFINITY;  S = -1.0;  }
                 T1 = (H + dplx_init_H) /(S + dplx_init_S + RC);
             }
-            if(max_tm < T1) {
-                if(S > MinEntropyCutoff) {
-                    H_max = H;
-                    S_max = S;
-                    max_tm = T1;
-                }
-            }
+            if(max_tm < T1)
+                if(S > MinEntropyCutoff) {  H_max = H;  S_max = S; max_tm = T1; }
         }
         if (hs == 1) return H_max;
         return S_max;
