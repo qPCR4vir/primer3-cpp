@@ -1366,6 +1366,55 @@ class ThAl
         return;
     }
 
+    void calc_terminal_bp(double temp) /* compute exterior loop */ /* terminal bp for monomer structure */
+    {
+        SEND5(0) = SEND5(1) = -1.0;
+        HEND5(0) = HEND5(1) = _INFINITY;
+        for(int i = 2; i<=(len1); i++)     {    SEND5(i) = MinEntropy;      HEND5(i) = 0;   }
+
+        double G;
+
+        for(int i = 2; i <= len1; ++i)         /* adding terminal penalties to 3' end and to 5' end */
+        {
+            int max = 0;
+            double T1 = (HEND5 (i-1) + dplx_init_H) / (SEND5(i- 1) + dplx_init_S + RC);
+            double T2 = (END5_1(i,1) + dplx_init_H) / (END5_1(i,2) + dplx_init_S + RC);
+            double T3 = (END5_2(i,1) + dplx_init_H) / (END5_2(i,2) + dplx_init_S + RC);
+            double T4 = (END5_3(i,1) + dplx_init_H) / (END5_3(i,2) + dplx_init_S + RC);
+            double T5 = (END5_4(i,1) + dplx_init_H) / (END5_4(i,2) + dplx_init_S + RC);
+            max = max5(T1,T2,T3,T4,T5);
+            switch (max) {
+                case 1:                         SEND5(i) = SEND5(i - 1);  HEND5(i) = HEND5(i - 1); break;
+                case 2: G = END5_1(i,1) - (temp * (END5_1(i,2)));
+
+                    if(G < G2)                { SEND5(i) = END5_1(i,2);  HEND5(i) = END5_1(i,1);  }
+                    else                      { SEND5(i) = SEND5(i - 1); HEND5(i) = HEND5(i - 1); }
+                    break;
+                case 3: G = END5_2(i,1) - (temp * (END5_2(i,2)));
+
+                    if(G < G2)                { SEND5(i) = END5_2(i,2);  HEND5(i) = END5_2(i,1);  }
+                    else                      { SEND5(i) = SEND5(i - 1); HEND5(i) = HEND5(i - 1); }
+                    break;
+                case 4: G = END5_3(i,1) - (temp * (END5_3(i,2)));
+
+                    if(G < G2)                { SEND5(i) = END5_3(i,2);  HEND5(i) = END5_3(i,1);  }
+                    else                      { SEND5(i) = SEND5(i - 1); HEND5(i) = HEND5(i - 1); }
+                    break;
+                case 5:
+                    G = END5_4(i,1) - (temp * (END5_4(i,2)));
+
+                    if(G < G2)                { SEND5(i) = END5_4(i,2);  HEND5(i) = END5_4(i,1);  }
+                    else                      { SEND5(i) = SEND5(i - 1); HEND5(i) = HEND5(i - 1); }
+                    break;
+                default:
+#ifdef DEBUG
+                std:: cerr << "WARNING: max5 returned character code" << max << "\n";
+#endif
+                    break;
+            }
+        }
+    }
+
 public:
 
 };
@@ -1404,85 +1453,6 @@ static double Ststack(int,int); /* returns entropy value for terminal stack */
 static double Htstack(int,int); /* returns enthalpy value for terminal stack */
 
 
-
-static void 
-calc_terminal_bp(double temp) /* compute exterior loop */ /* terminal bp for monomer structure */
-{
-   int i;
-   int max;
-   SEND5(0) = SEND5(1) = -1.0;
-   HEND5(0) = HEND5(1) = _INFINITY;
-   for(i = 2; i<=(len1); i++) {
-      SEND5(i) = MinEntropy;
-      HEND5(i) = 0;
-   }
-
-   double T1, T2, T3, T4, T5;
-   T1 = T2 = T3 = T4 = T5 = -_INFINITY;
-   double G;
-   /* adding terminal penalties to 3' end and to 5' end */
-   for(i = 2; i <= len1; ++i) {
-      max = 0;
-      T1 = T2 = T3 = T4 = T5 = -_INFINITY;
-      T1 = (HEND5 (i-1) + dplx_init_H) / (SEND5(i- 1) + dplx_init_S + RC);
-      T2 = (END5_1(i,1) + dplx_init_H) / (END5_1(i,2) + dplx_init_S + RC);
-      T3 = (END5_2(i,1) + dplx_init_H) / (END5_2(i,2) + dplx_init_S + RC);
-      T4 = (END5_3(i,1) + dplx_init_H) / (END5_3(i,2) + dplx_init_S + RC);
-      T5 = (END5_4(i,1) + dplx_init_H) / (END5_4(i,2) + dplx_init_S + RC);
-      max = max5(T1,T2,T3,T4,T5);
-      switch (max) {
-       case 1:
-         SEND5(i) = SEND5(i - 1);
-         HEND5(i) = HEND5(i - 1);
-         break;
-       case 2:
-         G = END5_1(i,1) - (temp * (END5_1(i,2)));
-         if(G < G2) {
-            SEND5(i) = END5_1(i,2);
-            HEND5(i) = END5_1(i,1);
-         } else {
-            SEND5(i) = SEND5(i - 1);
-            HEND5(i) = HEND5(i - 1);
-         }
-         break;
-       case 3:
-         G = END5_2(i,1) - (temp * (END5_2(i,2)));
-         if(G < G2) {
-            SEND5(i) = END5_2(i,2);
-            HEND5(i) = END5_2(i,1);
-         } else {
-            SEND5(i) = SEND5(i - 1);
-            HEND5(i) = HEND5(i - 1);
-         }
-         break;
-       case 4:
-         G = END5_3(i,1) - (temp * (END5_3(i,2)));
-         if(G < G2) {
-            SEND5(i) = END5_3(i,2);
-            HEND5(i) = END5_3(i,1);
-         } else {
-            SEND5(i) = SEND5(i - 1);
-            HEND5(i) = HEND5(i - 1);
-         }
-         break;
-       case 5:
-         G = END5_4(i,1) - (temp * (END5_4(i,2)));
-         if(G < G2) {
-            SEND5(i) = END5_4(i,2);
-            HEND5(i) = END5_4(i,1);
-         } else {
-            SEND5(i) = SEND5(i - 1);
-            HEND5(i) = HEND5(i - 1);
-         }
-         break;
-       default:
-#ifdef DEBUG
-         printf ("WARNING: max5 returned character code %d ??\n", max);
-#endif
-         break;
-      }
-   }
-}
 
 static double 
 END5_1(int i,int hs)
