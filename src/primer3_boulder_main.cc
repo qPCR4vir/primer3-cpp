@@ -45,7 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "libprimer3.h"
-#include "format_output.h"
+#include "format_output.hpp"
 #include "read_boulder.h"
 #include "print_boulder.h"
 

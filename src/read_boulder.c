@@ -452,33 +452,22 @@ read_boulder_record(FILE *file_input,
          continue;
          } */
 
-      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_SELF_ANY_TH",
-                           pa->o_args.max_self_any_th);
-      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_SELF_END_TH",
-                                 pa->o_args.max_self_end_th);
-      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_HAIRPIN_TH",
-                               pa->o_args.max_hairpin_th);
-      COMPARE_FLOAT("PRIMER_MAX_LIBRARY_MISPRIMING",
-                    pa->p_args.max_repeat_compl);
-      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_LIBRARY_MISHYB",
-                    pa->o_args.max_repeat_compl);
-      COMPARE_FLOAT("PRIMER_PAIR_MAX_LIBRARY_MISPRIMING",
-                    pa->pair_repeat_compl);
+      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_SELF_ANY_TH",   pa->o_args.max_self_any_th );
+      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_SELF_END_TH",   pa->o_args.max_self_end_th );
+      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_HAIRPIN_TH",    pa->o_args.max_hairpin_th  );
+      COMPARE_FLOAT("PRIMER_MAX_LIBRARY_MISPRIMING",     pa->p_args.max_repeat_compl);
+      COMPARE_FLOAT("PRIMER_INTERNAL_MAX_LIBRARY_MISHYB",pa->o_args.max_repeat_compl);
+      COMPARE_FLOAT("PRIMER_PAIR_MAX_LIBRARY_MISPRIMING",pa->pair_repeat_compl      );
       /* Mispriming / mishybing in the template. */
-      COMPARE_FLOAT("PRIMER_MAX_TEMPLATE_MISPRIMING",
-                    pa->p_args.max_template_mispriming);
-      COMPARE_FLOAT("PRIMER_MAX_TEMPLATE_MISPRIMING_TH",
-                          pa->p_args.max_template_mispriming_th);
-      COMPARE_FLOAT("PRIMER_PAIR_MAX_TEMPLATE_MISPRIMING",
-                    pa->pair_max_template_mispriming);
-      COMPARE_FLOAT("PRIMER_PAIR_MAX_TEMPLATE_MISPRIMING_TH",
-                    pa->pair_max_template_mispriming_th);
+      COMPARE_FLOAT("PRIMER_MAX_TEMPLATE_MISPRIMING",    pa->p_args.max_template_mispriming);
+      COMPARE_FLOAT("PRIMER_MAX_TEMPLATE_MISPRIMING_TH", pa->p_args.max_template_mispriming_th);
+      COMPARE_FLOAT("PRIMER_PAIR_MAX_TEMPLATE_MISPRIMING",  pa->pair_max_template_mispriming);
+      COMPARE_FLOAT("PRIMER_PAIR_MAX_TEMPLATE_MISPRIMING_TH",  pa->pair_max_template_mispriming_th);
        /* Control interpretation of ambiguity codes in mispriming
           and mishyb libraries. */
-      COMPARE_INT("PRIMER_LIB_AMBIGUITY_CODES_CONSENSUS",
-                  pa->lib_ambiguity_codes_consensus);
-      COMPARE_FLOAT("PRIMER_INSIDE_PENALTY", pa->inside_penalty);
-      COMPARE_FLOAT("PRIMER_OUTSIDE_PENALTY", pa->outside_penalty);
+      COMPARE_INT("PRIMER_LIB_AMBIGUITY_CODES_CONSENSUS",pa->lib_ambiguity_codes_consensus);
+      COMPARE_FLOAT("PRIMER_INSIDE_PENALTY",             pa->inside_penalty);
+      COMPARE_FLOAT("PRIMER_OUTSIDE_PENALTY",            pa->outside_penalty);
       if (COMPARE("PRIMER_MISPRIMING_LIBRARY")) {
         if (repeat_file_path != NULL) {
           pr_append_new_chunk(glob_err,

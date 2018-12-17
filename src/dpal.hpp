@@ -74,8 +74,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                                * the first sequence.
                                */
 
-/*
- * It is not possible to specify end-gap penalties for the DPAL_GLOBAL_END
+/** It is not possible to specify end-gap penalties for the DPAL_GLOBAL_END
  * and DPLAL_GLOBAL flags.
  */
 

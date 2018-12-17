@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 1996,1997,1998,1999,2000,2001,2004,2006,2007,2008
 Whitehead Institute for Biomedical Research, Steve Rozen
 (http://purl.com/STEVEROZEN/), Andreas Untergasser and Helen Skaletsky
@@ -40,8 +40,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <string>
+#include <iostream>
+#include <vector>
+#include <sstream>
+
+
 int
-main(int argc, const char**argv)
+do_dpal(int argc, const char**argv)
 {
     dpal_args a;
     dpal_results r;
@@ -59,7 +65,10 @@ main(int argc, const char**argv)
     int dpal_debug = 0;
     int dpal_only = 0;
     char *endptr;
-    const char *msg = 
+    std::string used_arg{" "} ;
+    for (int i=0; i<argc; i++) used_arg += argv[i];
+    const char *msg =
+      "\nUsed arguments: %s"
       "\nUsage: %s [-g <gval>] [-l <lval>] [-m <mval>]\n"
       "                 [-f2] [-p] [-s] [-e] <seq1> <seq2> <mode>"
       "\n\nwhere\n\n"
@@ -89,7 +98,7 @@ main(int argc, const char**argv)
       "       e is equivalent to G.\n\n";
 
     if (argc < 4) {
-      tmp_ret = fprintf(stderr, msg, argv[0]);
+      tmp_ret = fprintf(stderr, msg, used_arg.c_str(), argv[0]);
       exit(-1);
       return tmp_ret;
     }
@@ -210,4 +219,38 @@ main(int argc, const char**argv)
       printf("|\n");
     }
     return 0;
+}
+
+int
+main(int argc, const char**argv)
+{
+    if (argc > 1 && !strncmp("-t", argv[1], 2))
+    {
+        // assume we are testing, and input is cin.
+        std::vector<const char *> new_argv  ;
+
+        new_argv.push_back(argv[0]);
+        for (int i=2; i<argc; i++)
+            new_argv.push_back(argv[i]);
+        auto base_arg_cout = new_argv.size();
+
+
+        std::string line;
+        int exit_value =0;
+        while (std::getline(std::cin,line))
+        {
+            std::istringstream in{line};
+            std::string arg;
+            std::vector<std::string> more_arg;
+            while (in >> arg)
+                more_arg.push_back(arg);
+            new_argv.resize(base_arg_cout);
+            for (auto &a : more_arg)
+                new_argv.push_back(a.c_str());
+            exit_value = do_dpal(new_argv.size(), new_argv.data());
+        }
+        return exit_value;
+    }
+    else
+        return do_dpal(argc, argv);
 }

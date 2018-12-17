@@ -47,7 +47,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "thal.h"
+#include "thal.hpp"
 #include "thal_parameters.h"
 
 /* Check on which OS we compile */

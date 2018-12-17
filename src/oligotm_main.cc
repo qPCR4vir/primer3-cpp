@@ -39,9 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "oligotm.h"
+#include "oligotm.hpp"
 
-/* Print the melting temperature of an oligo on stdout. */
+/** Print the melting temperature of an oligo on stdout. */
 /* This program provides a command line interface to
    the function oligotm() in oligtm.c
 */

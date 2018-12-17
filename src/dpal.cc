@@ -1,5 +1,4 @@
-/*
-Copyright (c) 1996,1997,1998,1999,2000,2001,2004,2006,2007,2008
+/** Copyright (c) 1996,1997,1998,1999,2000,2001,2004,2006,2007,2008
 Whitehead Institute for Biomedical Research, Steve Rozen
 (http://purl.com/STEVEROZEN/), Andreas Untergasser and Helen Skaletsky
 All rights reserved.
@@ -40,34 +39,30 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "dpal.h"
+#include "dpal.hpp"
 
-/*
- * We should probably remove the DPAL_FORGET_PATH compile-time option.
+/** We should probably remove the DPAL_FORGET_PATH compile-time option.
  * Efficiency now derives primarily from specialized versions of _dpal* for
  * particular parameter values.
  */
 
 #ifndef DPAL_FORGET_PATH
-/* 
- * Print an alignment on stderr, given the 2 aligned sequences, the "trace"
- * matrix, and the coordinate of the end point of the alignment to print.
+/** Print an alignment on stderr, given the 2 aligned sequences, the "trace"
+ *  matrix, and the coordinate of the end point of the alignment to print.
  */
 static char *print_align(const unsigned char *, const unsigned char *,
                          int[DPAL_MAX_ALIGN][DPAL_MAX_ALIGN][3], int, int,
                          const dpal_args*, const dpal_mode mode, dpal_results *);
 #endif
 
-/* 
- * Return 1 if there is an illegal character in the first argument, and place
- * the illegal character in the address contained in the last argument.
+/** Return 1 if there is an illegal character in the first argument, and place
+ *  the illegal character in the address contained in the last argument.
  */
 static int  illegal_char(const unsigned char *, const dpal_ssm, char *);
 
 static const unsigned char *xlate_ambiguity_code(char);
 
-/*
- * The next function headers are for various versions of the
+/** The next function headers are for various versions of the
  * dynamic-programming alignment code optimized for particular input argument
  * values. 
  */
