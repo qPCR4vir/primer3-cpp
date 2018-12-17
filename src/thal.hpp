@@ -84,7 +84,7 @@ class thal_parameters
  {
    public:
     thal_parameters(); ///< calls set_defaults( );
-    thal_parameters(const std::filesystem::path& dirname );  ///< calls load( );
+    explicit thal_parameters(const std::filesystem::path& dirname );  ///< calls load( );
     ~thal_parameters();
 
     /// set hard coded defaults
@@ -97,7 +97,6 @@ class thal_parameters
      class impl;
      std::unique_ptr<impl> m_thal_p;
 } ;
-
 
 /// Structure for passing arguments to THermodynamic ALignment calculation
 class CProgParam_ThAl
@@ -115,7 +114,7 @@ class CProgParam_ThAl
    int          dimer = 1;         ///< if non zero, dimer structure is calculated
 
     enum class mode {
-        FAST    = 0, //<  = 0 - score only with optimized functions (fast)
+        FAST    = 0, //< = 0 - score only with optimized functions (fast)
         GENERAL = 1, //< = 1 - use general function without debug (slow)
         DEBUG_F = 2, //< = 2 - debug mode with fast, print alignments on STDERR
         DEBUG   = 3, //< = 3 - debug mode print alignments on STDERR
@@ -124,8 +123,30 @@ class CProgParam_ThAl
 
     CProgParam_ThAl () = default ;
 
-    void set_defaults      ( );
-    void set_oligo_defaults( );
+    void set_defaults      ( )
+    {
+        this->type     = type::Any;     /* thal_alignment_type THAL_ANY */
+        this->maxLoop  = MAX_LOOP;
+        this->mv       = 50;            /* mM */
+        this->dv       = 0.0;           /* mM */
+        this->dntp     = 0.8;           /* mM */
+        this->dna_conc = 50;            /* nM */
+        this->temp     = TEMP_KELVIN;   /* Kelvin */
+        this->dimer    = 1;             /* by default dimer structure is calculated */
+    }
+
+    void set_oligo_defaults( )
+    {
+        this->type     = type::Any;     /* thal_alignment_type THAL_ANY */
+        this->maxLoop  = MAX_LOOP;
+        this->mv       = 50;            /* mM */
+        this->dv       = 0.0;           /* mM */
+        this->dntp     = 0.0;           /* mM the only difference !!!! */
+        this->dna_conc = 50;            /* nM */
+        this->temp     = TEMP_KELVIN;   /* Kelvin */
+        this->dimer    = 1;             /* by default dimer structure is calculated */
+    }
+
 
     ~CProgParam_ThAl() = default;
     // int  thal_free_parameters(thal_parameters *a);
@@ -150,26 +171,7 @@ using seq = std::basic_string<unsigned char> ;
 ///    to check errno.
 void thal( const seq& oligo_f,
            const seq& oligo_r,
-           CProgParam_ThAl *a,
-           const CProgParam_ThAl::mode mode);
-
-
-/* Read the thermodynamic values (parameters) from the parameter files
-   in the directory specified by 'path'.  Return 0 on success and -1
-   on error. The thermodynamic values are stored in multiple static
-   variables. */
-/* Here is an example of how this function is used in 
-   primer3_boulder_main.c: */
-#if 0
-  if (get_thermodynamic_values(thermodynamic_params_path, &o)) {
-    fprintf(stderr, "%s\n", o.msg);
-    exit(-1);
-  }
-#endif
-
-int  get_thermodynamic_values(const thal_parameters *tp);
-int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
-
-
+           const CProgParam_ThAl &a,
+           CProgParam_ThAl::mode mode);
 
 #endif

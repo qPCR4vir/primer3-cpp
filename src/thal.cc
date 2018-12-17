@@ -71,19 +71,11 @@
 #if defined(__sun)
 #include <ieeefp.h>
 #endif
+/*#define DEBUG*/   // todo ??
 
 #include "thal.hpp"
 
-extern const double _INFINITY;
-
-/*#define DEBUG*/
-#ifndef MIN_HRPN_LOOP
-#define MIN_HRPN_LOOP 3 /*  minimum size of hairpin loop */
-#endif
-
-#ifndef THAL_EXIT_ON_ERROR
-#define THAL_EXIT_ON_ERROR 0
-#endif
+extern const double _INFINITY;     // todo ??
 
 //     **************    thal_parameters    ************************
 
@@ -107,38 +99,15 @@ const double _INFINITY = 1.0 / 0.0;
 #   endif
 # endif
 
-
-class thal_parameters::impl
+/* part of calculating salt correction for Tm by SantaLucia et al */
+static double
+saltCorrectS (double mv, double dv, double dntp)
 {
-    using upis=std::unique_ptr<std::istream>;
+    if(dv<=0) dntp=dv;
+    return 0.368*((log((mv+120*(sqrt(fmax(0.0, dv-dntp))))/1000)));
+}
 
-    upis dangle_dh;
-    upis dangle_ds;
-    upis loops_dh;
-    upis loops_ds;
-    upis stack_dh;
-    upis stack_ds;
-    upis stackmm_dh;
-    upis stackmm_ds;
-    upis tetraloop_dh;
-    upis tetraloop_ds;
-    upis triloop_dh;
-    upis triloop_ds;
-    upis tstack_tm_inf_ds;
-    upis tstack_dh;
-    upis tstack2_dh;
-    upis tstack2_ds;
 
-    int set_defaults( );
-    // int set_default_thal_parameters(thal_parameters *a);
-    int load(const std::filesystem::path& dirname );
-    // int  thal_load_parameters(const char *path, thal_parameters *a, thal_results* o);
-
-    int  parse_thermodynamic_values( );
-};
-
-/// The files from the directory primer3_config loaded as istream.
-///   The actual parameters are static-global char[] values in thal.cc
 /* matrix for allowed; bp 0 - no bp, watson crick bp - 1 */
 static const int BPI[5][5] =  {
         {0, 0, 0, 1, 0}, /* A, C, G, T, N; */
@@ -146,9 +115,6 @@ static const int BPI[5][5] =  {
         {0, 1, 0, 0, 0},
         {1, 0, 0, 0, 0},
         {0, 0, 0, 0, 0}};
-
-//static const char BASES[5] = {'A', 'C', 'G', 'T', 'N'}; /* bases to be considered - N is every symbol that is not A, G, C,$
-//static const char BASE_PAIRS[4][4] = {"A-T", "C-G", "G-C", "T-A" }; /* allowed basepairs */
 
 static unsigned char
 nt2code(char c)          ///< converts DNA nt char to unsigned char code; 0-A, 1-C, 2-G, 3-T, 4-whatever
@@ -170,20 +136,6 @@ seq nt2code (const std::string& nt)
     return code;
 }
 
-using loop_prmtr = std::map<seq, double> ;   ///< loops parameter as map of uchar sequence code to value
-loop_prmtr triloopEntropies,     /* therm penalties for given triloop   seq-s */
-        triloopEnthalpies,    /* therm penalties for given triloop   seq-s */
-        tetraloopEntropies,   /* therm penalties for given tetraloop seq-s */
-        tetraloopEnthalpies ; /* therm penalties for given tetraloop seq-s */
-
-struct thal_parameters
-{
-
-} ;
-
-
-static double saltCorrectS (double mv, double dv, double dntp); /* part of calculating salt correction
-                                                                   for Tm by SantaLucia et al */
 static void
 reverse(seq& s)                                // not complement !
 {
@@ -195,418 +147,543 @@ reverse(seq& s)                                // not complement !
     }
 }
 
-#define INIT_BUF_SIZE 1024
-
-upis
-readParamFile(const std::filesystem::path& dirname,
-              const std::filesystem::path& fname
-)
+class thal_parameters::impl
 {
-    std::ifstream file {(dirname / fname).string()};
-    if (!file) {
-        throw std::runtime_error( "Trying to read Th parameters file: Unable to open file: "
-                                  + (dirname / fname).string());
+    using upis=std::unique_ptr<std::istream>;
+
+    upis dangle_dh,   dangle_ds;
+    upis loops_dh,    loops_ds;
+    upis stack_dh,    stack_ds;
+    upis stackmm_dh,  stackmm_ds;
+    upis tetraloop_dh,tetraloop_ds;
+    upis triloop_dh,  triloop_ds;
+    upis tstack_tm_inf_ds, tstack_dh;
+    upis tstack2_dh,  tstack2_ds;
+
+public:
+    impl()
+    {
+        set_defaults( );
     }
-    // read the file
-    auto r = std::make_unique<std::strstream>();
-    (*r) << fi.rdbuf();   // this will eats the new-lines ??    //upis res= std::move(r);
-    // see https://en.cppreference.com/w/cpp/io/basic_ostream/operator_ltlt
-    // http://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
-    return r;
-}
+    explicit impl(const std::filesystem::path& dirname )
+    {
+        load(dirname);
+    }
+
+    int set_defaults( )
+    {
+        this->dangle_dh         = std::make_unique<std::istrstream>(dangle_dh_data );
+        this->dangle_ds         = std::make_unique<std::istrstream>(dangle_ds_data);
+        this->loops_dh          = std::make_unique<std::istrstream>(loops_dh_data );
+        this->loops_ds          = std::make_unique<std::istrstream>(loops_ds_data );
+        this->stack_dh          = std::make_unique<std::istrstream>(stack_dh_data );
+        this->stack_ds          = std::make_unique<std::istrstream>(stack_ds_data );
+        this->stackmm_dh        = std::make_unique<std::istrstream>(stackmm_dh_data);
+        this->stackmm_ds        = std::make_unique<std::istrstream>(stackmm_ds_data);
+        this->tetraloop_dh      = std::make_unique<std::istrstream>(tetraloop_dh_data );
+        this->tetraloop_ds      = std::make_unique<std::istrstream>(tetraloop_ds_data );
+        this->triloop_dh        = std::make_unique<std::istrstream>(triloop_dh_data );
+        this->triloop_ds        = std::make_unique<std::istrstream>(triloop_ds_data );
+        this->tstack_tm_inf_ds  = std::make_unique<std::istrstream>(tstack_tm_inf_ds_data );
+        this->tstack_dh         = std::make_unique<std::istrstream>(tstack_dh_data );
+        this->tstack2_dh        = std::make_unique<std::istrstream>(tstack2_dh_data );
+        this->tstack2_ds        = std::make_unique<std::istrstream>(tstack2_ds_data );
+    }
+
+    int load(const std::filesystem::path& dirname )
+    {
+        dangle_dh    = readParamFile(dirname, "dangle.dh");
+        dangle_ds    = readParamFile(dirname, "dangle.ds");
+        loops_dh     = readParamFile(dirname, "loops.dh");
+        loops_ds     = readParamFile(dirname, "loops.ds");
+        stack_dh     = readParamFile(dirname, "stack.dh");
+        stack_ds     = readParamFile(dirname, "stack.ds");
+        stackmm_dh   = readParamFile(dirname, "stackmm.dh");
+        stackmm_ds   = readParamFile(dirname, "stackmm.ds");
+        tetraloop_dh = readParamFile(dirname, "tetraloop.dh");
+        tetraloop_ds = readParamFile(dirname, "tetraloop.ds");
+        triloop_dh   = readParamFile(dirname, "triloop.dh");
+        triloop_ds   = readParamFile(dirname, "triloop.ds");
+        tstack_tm_inf_ds = readParamFile(dirname, "tstack_tm_inf.ds");
+        tstack_dh    = readParamFile(dirname, "tstack.dh");
+        tstack2_dh   = readParamFile(dirname, "tstack2.dh");
+        tstack2_ds   = readParamFile(dirname, "tstack2.ds");
+
+        return 0;
+    }
+
+    int  parse_thermodynamic_values( )
+    {
+        getStack    ();
+        getStackint2();
+        getDangle   ();
+        getLoop     ();
+        getTstack   ();
+        getTstack2  ();
+        getTriloop  ();
+        getTetraloop();
+
+        tableStartATS(AT_S, atpS);    /* getting the AT-penalties */
+        tableStartATH(AT_H, atpH);
+
+        return 0;
+    }
+
+    double  dangleEntropies3   [5][5][5],     ///< thermodynamic paramteres for 3' dangling ends
+            dangleEnthalpies3  [5][5][5],     ///< ther params for 3' dangling ends
+            dangleEntropies5   [5][5][5],     ///< ther params for 5' dangling ends
+            dangleEnthalpies5  [5][5][5],     ///< ther params for 5' dangling ends
+            stackEntropies     [5][5][5][5],  ///< ther params for perfect match pairs
+            stackEnthalpies    [5][5][5][5],  ///< ther params for perfect match pairs
+            stackint2Entropies [5][5][5][5],  ///< ther params for perfect match and internal mm
+            stackint2Enthalpies[5][5][5][5],  ///< ther params for perfect match and internal mm
+            tstackEntropies    [5][5][5][5],  ///< ther params for terminal mismatches
+            tstackEnthalpies   [5][5][5][5],  ///< ther params for terminal mismatches
+            tstack2Entropies   [5][5][5][5],  ///< ther params for internal terminal mismatches
+            tstack2Enthalpies  [5][5][5][5],  ///< ther params for internal terminal mismatches
+            interiorLoopEntropies [30],       ///< interior loop params according to length of the loop
+            bulgeLoopEntropies    [30],       ///< bulge loop params according to length of the loop
+            hairpinLoopEntropies  [30],       ///< hairpin loop params accordint to length of the loop
+            interiorLoopEnthalpies[30],       ///< same as interiorLoopEntropies but values of entropy
+            bulgeLoopEnthalpies   [30],       ///< same as bulgeLoopEntropies but values of entropy
+            hairpinLoopEnthalpies [30],       ///< same as hairpinLoopEntropies but values of entropy
+            atpS            [5][5],           ///< AT penalty
+            atpH            [5][5];           ///< AT penalty
+
+    using loop_prmtr = std::map<seq, double> ;   ///< loops parameter as map of uchar sequence code to value
+    loop_prmtr  triloopEntropies,      ///< therm penalties for given triloop   seq-s
+                triloopEnthalpies,     ///< therm penalties for given triloop   seq-s
+                tetraloopEntropies,    ///< therm penalties for given tetraloop seq-s
+                tetraloopEnthalpies ;  ///< therm penalties for given tetraloop seq-s
+
+private:
+    static upis readParamFile(const std::filesystem::path& dirname, const std::filesystem::path& fname)
+    {
+        std::ifstream file {(dirname / fname).string()};
+        if (!file) {
+            throw std::runtime_error( "Trying to read Th parameters file: Unable to open file: "
+                                      + (dirname / fname).string());
+        }
+        // read the file
+        auto r = std::make_unique<std::strstream>();
+        (*r) << fi.rdbuf();   // this will eats the new-lines ??    //upis res= std::move(r);
+        // see https://en.cppreference.com/w/cpp/io/basic_ostream/operator_ltlt
+        // http://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+        return r;
+    }
+
+    /// These functions are needed as "inf" cannot be read on Windows directly
+    static double readDouble(std::istream& istr)
+    {
+        str::string nmb;
+        istr >> nmb ;
+
+        if (nmb == "inf") return _INFINITY;
+        return std::stod(nmb);
+    }
+
+    /// Reads a line containing 3 doubles, which can be specified as "inf".
+    static void readLoop(std::istream& istr , double &v1, double &v2, double &v3)
+    {
+        int n;         /* skip first number on the line */
+        istr >> n ;
+
+        v1 = readDouble(istr);
+        v2 = readDouble(istr);
+        v3 = readDouble(istr);
+    }
+
+    /// Reads a line containing a short string and a double, used for reading a triloop or tetraloop.
+    static std::istream& readTLoop(std::istream& istr, loop_prmtr& lprmtr)
+    {
+        std::string& s; /*tetraloop string has 6 characters*/ /*triloop string has 5 characters*/
+        s.reserve(6);
+        istr >> s;                            /* read the string */
+        lprmtr[ nt2code(s) ] = readDouble(istr);
+        return istr;
+    }
+
+    void getStack()
+    {
+        stack_ds->seekg(std::ios_base::beg);
+        stack_dh->seekg(std::ios_base::beg);
+        for (int i  = 0; i  < 5; ++i )
+        for (int ii = 0; ii < 5; ++ii)
+        for (int j  = 0; j  < 5; ++j )
+        for (int jj = 0; jj < 5; ++jj)
+            if (i == 4 || j == 4 || ii == 4 || jj == 4)
+            {
+                stackEntropies [i][ii][j][jj] = -1.0;
+                stackEnthalpies[i][ii][j][jj] = _INFINITY;
+            } else
+            {
+                stackEntropies [i][ii][j][jj] = readDouble(*stack_ds);
+                stackEnthalpies[i][ii][j][jj] = readDouble(*stack_dh);
+                if (!isFinite(stackEntropies [i][ii][j][jj]) ||
+                    !isFinite(stackEnthalpies[i][ii][j][jj]))
+                {
+                    stackEntropies [i][ii][j][jj] = -1.0;
+                    stackEnthalpies[i][ii][j][jj] = _INFINITY;
+                }
+            }
+    }
+
+    void getStackint2()
+    {
+        stackmm_ds->seekg(std::ios_base::beg);
+        stackmm_dh->seekg(std::ios_base::beg);
+        for (int i  = 0; i  < 5; ++i )
+        for (int ii = 0; ii < 5; ++ii)
+        for (int j  = 0; j  < 5; ++j )
+        for (int jj = 0; jj < 5; ++jj)
+            if (i == 4 || j == 4 || ii == 4 || jj == 4)
+            {
+                stackint2Entropies [i][ii][j][jj] = -1.0;
+                stackint2Enthalpies[i][ii][j][jj] = _INFINITY;
+            } else
+            {
+                stackint2Entropies [i][ii][j][jj] = readDouble(*stackmm_ds );
+                stackint2Enthalpies[i][ii][j][jj] = readDouble(*stackmm_dh );
+                if (!isFinite(stackint2Entropies [i][ii][j][jj]) ||
+                    !isFinite(stackint2Enthalpies[i][ii][j][jj]))
+                {
+                    stackint2Entropies [i][ii][j][jj] = -1.0;
+                    stackint2Enthalpies[i][ii][j][jj] = _INFINITY;
+                }
+            }
+    }
+
+    void getDangle()
+    {
+        dangle_ds->seekg(std::ios_base::beg);
+        dangle_dh->seekg(std::ios_base::beg);
+        for (int i = 0; i < 5; ++i)
+        for (int j = 0; j < 5; ++j)
+        for (int k = 0; k < 5; ++k)
+        {
+            if (i == 4 || j == 4)
+            {
+                dangleEntropies3 [i][k][j] = -1.0;
+                dangleEnthalpies3[i][k][j] = _INFINITY;
+            }
+            else
+            if (k == 4)
+              {
+                dangleEntropies3 [i][k][j] = -1.0;
+                dangleEnthalpies3[i][k][j] = _INFINITY;
+              } else
+              {
+                dangleEntropies3 [i][k][j] = readDouble(*dangle_ds );
+                dangleEnthalpies3[i][k][j] = readDouble(*dangle_dh );
+                if(!isFinite(dangleEntropies3 [i][k][j]) ||
+                   !isFinite(dangleEnthalpies3[i][k][j]))
+                {
+                    dangleEntropies3 [i][k][j] = -1.0;
+                    dangleEnthalpies3[i][k][j] = _INFINITY;
+                }
+              }
+        }
+
+        for (i = 0; i < 5; ++i)
+        for (j = 0; j < 5; ++j)
+        for (k = 0; k < 5; ++k)
+        {
+            if (i == 4 || j == 4)
+            {
+                dangleEntropies5 [i][j][k] = -1.0;
+                dangleEnthalpies5[i][j][k] = _INFINITY;
+            } else
+            if (k == 4)
+              {
+                dangleEntropies5 [i][j][k] = -1.0;
+                dangleEnthalpies5[i][j][k] = _INFINITY;
+              } else
+              {
+                dangleEntropies5 [i][j][k] = readDouble(*tp->dangle_ds );
+                dangleEnthalpies5[i][j][k] = readDouble(*tp->dangle_dh);
+                if(!isFinite(dangleEntropies5 [i][j][k]) ||
+                   !isFinite(dangleEnthalpies5[i][j][k]))
+                {
+                    dangleEntropies5 [i][j][k] = -1.0;
+                    dangleEnthalpies5[i][j][k] = _INFINITY;
+                }
+              }
+        }
+    }
+
+    void getLoop()
+    {
+        loops_ds->seekg(std::ios_base::beg);
+        loops_dh->seekg(std::ios_base::beg);
+        for (int k = 0; k < 30; ++k)
+        {
+            readLoop(*loops_ds, &interiorLoopEntropies[k],
+                                &bulgeLoopEntropies   [k],
+                                &hairpinLoopEntropies [k]);
+            readLoop(*loops_ds, &interiorLoopEnthalpies[k],
+                                &bulgeLoopEnthalpies   [k],
+                                &hairpinLoopEnthalpies [k]);
+        }
+    }
+
+    void getTstack()
+    {
+        tstack_tm_inf_ds->seekg(std::ios_base::beg);
+        tstack_dh->seekg(std::ios_base::beg);
+        for (int i1 = 0; i1 < 5; ++i1)
+        for (int i2 = 0; i2 < 5; ++i2)
+        for (int j1 = 0; j1 < 5; ++j1)
+        for (int j2 = 0; j2 < 5; ++j2)
+            if (i1 == 4 || j1 == 4)
+            {
+                tstackEnthalpies[i1][i2][j1][j2] = _INFINITY;
+                tstackEntropies [i1][i2][j1][j2] = -1.0;
+            } else
+              if (i2 == 4 || j2 == 4)
+            {
+                tstackEntropies [i1][i2][j1][j2] = 0.00000000001;
+                tstackEnthalpies[i1][i2][j1][j2] = 0.0;
+            } else
+            {
+                tstackEntropies [i1][i2][j1][j2] = readDouble(*tstack_tm_inf_ds);
+                tstackEnthalpies[i1][i2][j1][j2] = readDouble(*tstack_dh);
+                if ( !isFinite(tstackEntropies [i1][i2][j1][j2]) ||
+                     !isFinite(tstackEnthalpies[i1][i2][j1][j2]) )
+                {
+                    tstackEntropies [i1][i2][j1][j2] = -1.0;
+                    tstackEnthalpies[i1][i2][j1][j2] = _INFINITY;
+                }
+            }
+    }
+
+    void getTstack2()
+    {
+        tstack2_ds->seekg(std::ios_base::beg);
+        tstack2_dh->seekg(std::ios_base::beg);
+        for (int i1 = 0; i1 < 5; ++i1)
+        for (int i2 = 0; i2 < 5; ++i2)
+        for (int j1 = 0; j1 < 5; ++j1)
+        for (int j2 = 0; j2 < 5; ++j2)
+            if (i1 == 4 || j1 == 4)
+            {
+                tstack2Enthalpies[i1][i2][j1][j2] = _INFINITY;
+                tstack2Entropies [i1][i2][j1][j2] = -1.0;
+            } else
+            if (i2 == 4 || j2 == 4)
+            {
+                tstack2Entropies [i1][i2][j1][j2] = 0.00000000001;
+                tstack2Enthalpies[i1][i2][j1][j2] = 0.0;
+            } else
+            {
+                tstack2Entropies [i1][i2][j1][j2] = readDouble(*tstack2_ds);
+                tstack2Enthalpies[i1][i2][j1][j2] = readDouble(*tstack2_dh);
+                if (!isFinite(tstack2Entropies [i1][i2][j1][j2]) ||
+                    !isFinite(tstack2Enthalpies[i1][i2][j1][j2])    )
+                {
+                    tstack2Entropies [i1][i2][j1][j2] = -1.0;
+                    tstack2Enthalpies[i1][i2][j1][j2] = _INFINITY;
+                }
+            }
+    }
+
+    void getTriloop()
+    {
+        triloopEntropies .clear();  // ?? dont reuse
+        triloopEnthalpies.clear();
+
+        triloop_ds->seekg(std::ios_base::beg);
+        triloop_dh->seekg(std::ios_base::beg);
+
+        while ( readTLoop(triloop_ds, triloopEntropies ) ;
+        while ( readTLoop(triloop_dh, triloopEnthalpies) ;
+    }
+
+    void getTetraloop()
+    {
+        tetraloopEntropies .clear();  // ?? dont reuse
+        tetraloopEnthalpies.clear();
+
+        triloop_ds->seekg(std::ios_base::beg);
+        triloop_dh->seekg(std::ios_base::beg);
+
+        while ( readTLoop(triloop_ds, tetraloopEntropies ) ;
+        while ( readTLoop(triloop_dh, tetraloopEnthalpies) ;
+    }
+
+    void tableStartATS(double atp_value)
+    {
+        for (int i = 0; i < 5; ++i)
+        for (int j = 0; j < 5; ++j)
+            atpS[i][j] = 0.00000000001;
+
+        atpS[0][3] = atpS[3][0] = atp_value;
+    }
+
+    void tableStartATH(double atp_value)
+    {
+        for (int i = 0; i < 5; ++i)
+        for (int j = 0; j < 5; ++j)
+            atpH[i][j] = 0.0;
+
+        atpH[0][3] = atpH[3][0] = atp_value;
+    }
+
+};
+
+thal_parameters::thal_parameters()
+    : m_thal_p  { std::make_unique<thal_parameters::impl>() }
+{}
+
+thal_parameters::thal_parameters(const std::filesystem::path& dirname )
+    : m_thal_p  { std::make_unique<thal_parameters::impl>(const std::filesystem::path& dirname ) }
+{}
+
+thal_parameters::~thal_parameters()
+{}
 
 int thal_parameters::set_defaults( )
 {
-    this->dangle_dh         = std::make_unique<std::istrstream>(dangle_dh_data );
-    this->dangle_ds         = std::make_unique<std::istrstream>(dangle_ds_data);
-    this->loops_dh          = std::make_unique<std::istrstream>(loops_dh_data );
-    this->loops_ds          = std::make_unique<std::istrstream>(loops_ds_data );
-    this->stack_dh          = std::make_unique<std::istrstream>(stack_dh_data );
-    this->stack_ds          = std::make_unique<std::istrstream>(stack_ds_data );
-    this->stackmm_dh        = std::make_unique<std::istrstream>(stackmm_dh_data);
-    this->stackmm_ds        = std::make_unique<std::istrstream>(stackmm_ds_data);
-    this->tetraloop_dh      = std::make_unique<std::istrstream>(tetraloop_dh_data );
-    this->tetraloop_ds      = std::make_unique<std::istrstream>(tetraloop_ds_data );
-    this->triloop_dh        = std::make_unique<std::istrstream>(triloop_dh_data );
-    this->triloop_ds        = std::make_unique<std::istrstream>(triloop_ds_data );
-    this->tstack_tm_inf_ds  = std::make_unique<std::istrstream>(tstack_tm_inf_ds_data );
-    this->tstack_dh         = std::make_unique<std::istrstream>(tstack_dh_data );
-    this->tstack2_dh        = std::make_unique<std::istrstream>(tstack2_dh_data );
-    this->tstack2_ds        = std::make_unique<std::istrstream>(tstack2_ds_data );
+    this->m_thal_p->set_defaults();
+    return 0;
 }
 
 int thal_parameters::load (const std::filesystem::path& dirname )
 {
-
-    a->dangle_dh  = readParamFile(dirname, "dangle.dh", o);
-    a->dangle_ds  = readParamFile(dirname, "dangle.ds", o);
-    a->loops_dh   = readParamFile(dirname, "loops.dh", o);
-    a->loops_ds   = readParamFile(dirname, "loops.ds", o);
-    a->stack_dh   = readParamFile(dirname, "stack.dh", o);
-    a->stack_ds   = readParamFile(dirname, "stack.ds", o);
-    a->stackmm_dh = readParamFile(dirname, "stackmm.dh", o);
-    a->stackmm_ds = readParamFile(dirname, "stackmm.ds", o);
-    a->tetraloop_dh = readParamFile(dirname, "tetraloop.dh", o);
-    a->tetraloop_ds = readParamFile(dirname, "tetraloop.ds", o);
-    a->triloop_dh = readParamFile(dirname, "triloop.dh", o);
-    a->triloop_ds = readParamFile(dirname, "triloop.ds", o);
-    a->tstack_tm_inf_ds = readParamFile(dirname, "tstack_tm_inf.ds", o);
-    a->tstack_dh  = readParamFile(dirname, "tstack.dh", o);
-    a->tstack2_dh = readParamFile(dirname, "tstack2.dh", o);
-    a->tstack2_ds = readParamFile(dirname, "tstack2.ds", o);
-
+    this->m_thal_p->load(dirname);
     return 0;
 }
 
-static double
-saltCorrectS (double mv, double dv, double dntp)
-{
-    if(dv<=0) dntp=dv;
-    return 0.368*((log((mv+120*(sqrt(fmax(0.0, dv-dntp))))/1000)));
-}
 
-/* These functions are needed as "inf" cannot be read on Windows directly */
-double
-readDouble(std::istream& istr )
-{
-    str::string nmb;
-    istr >> nmb ;
 
-    if (nmb == "inf") return _INFINITY;
-    return std::stod(nmb);
-}
-
-/* Reads a line containing 3 doubles, which can be specified as "inf". */
-static void
-readLoop(std::istream& istr , double &v1, double &v2, double &v3 )
-{
-    int n;         /* skip first number on the line */
-    istr >> n ;
-
-    v1 = readDouble(istr);
-    v2 = readDouble(istr);
-    v3 = readDouble(istr);
-}
-
-/* Reads a line containing a short string and a double, used for reading a triloop or tetraloop. */
-static std::istream&
-readTLoop(std::istream& istr, loop_prmtr& lprmtr,  bool triloop )
-{
-    std::string& s; /*tetraloop string has 6 characters*/ /*triloop string has 5 characters*/
-    s.reserve(6);
-    istr >> s;                            /* read the string */
-    lprmtr[ nt2code(s) ] = readDouble(istr);
-    return istr;
-}
-
-static void
-getStack(double stackEntropies [5][5][5][5],
-         double stackEnthalpies[5][5][5][5], thal_parameters &tp)
-{
-    tp.stack_ds->seekg(std::ios_base::beg);
-    tp.stack_dh->seekg(std::ios_base::beg);
-    int i, j, ii, jj;
-    for (i = 0; i < 5; ++i) {
-        for (ii = 0; ii < 5; ++ii) {
-            for (j = 0; j < 5; ++j) {
-                for (jj = 0; jj < 5; ++jj) {
-                    if (i == 4 || j == 4 || ii == 4 || jj == 4) {
-                        stackEntropies[i][ii][j][jj] = -1.0;
-                        stackEnthalpies[i][ii][j][jj] = _INFINITY;
-                    } else {
-                        stackEntropies [i][ii][j][jj] = readDouble(*tp.stack_ds );
-                        stackEnthalpies[i][ii][j][jj] = readDouble(*tp.stack_dh);
-                        if (!isFinite(stackEntropies[i][ii][j][jj]) || !isFinite(stackEnthalpies[i][ii][j][jj])) {
-                            stackEntropies[i][ii][j][jj] = -1.0;
-                            stackEnthalpies[i][ii][j][jj] = _INFINITY;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void
-getStackint2(double stackint2Entropies [5][5][5][5],
-             double stackint2Enthalpies[5][5][5][5], const thal_parameters *tp )
-{
-    int i, j, ii, jj;
-    tp->stackmm_ds->seekg(std::ios_base::beg);
-    tp->stackmm_dh->seekg(std::ios_base::beg);
-    for (i = 0; i < 5; ++i) {
-        for (ii = 0; ii < 5; ++ii) {
-            for (j = 0; j < 5; ++j) {
-                for (jj = 0; jj < 5; ++jj) {
-                    if (i == 4 || j == 4 || ii == 4 || jj == 4) {
-                        stackint2Entropies [i][ii][j][jj] = -1.0;
-                        stackint2Enthalpies[i][ii][j][jj] = _INFINITY;
-                    } else {
-                        stackint2Entropies [i][ii][j][jj] = readDouble(*tp->stackmm_ds );
-                        stackint2Enthalpies[i][ii][j][jj] = readDouble(*tp->stackmm_dh );
-                        if (!isFinite(stackint2Entropies[i][ii][j][jj]) || !isFinite(stackint2Enthalpies[i][ii][j][jj])) {
-                            stackint2Entropies [i][ii][j][jj] = -1.0;
-                            stackint2Enthalpies[i][ii][j][jj] = _INFINITY;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void
-getDangle(double dangleEntropies3 [5][5][5],
-          double dangleEnthalpies3[5][5][5],
-          double dangleEntropies5 [5][5][5],
-          double dangleEnthalpies5[5][5][5], const thal_parameters *tp )
-{
-    int i, j, k;
-    tp->dangle_ds->seekg(std::ios_base::beg);
-    tp->dangle_dh->seekg(std::ios_base::beg);
-    for (i = 0; i < 5; ++i)
-        for (j = 0; j < 5; ++j)
-            for (k = 0; k < 5; ++k) {
-                if (i == 4 || j == 4) {
-                    dangleEntropies3 [i][k][j] = -1.0;
-                    dangleEnthalpies3[i][k][j] = _INFINITY;
-                } else if (k == 4) {
-                    dangleEntropies3 [i][k][j] = -1.0;
-                    dangleEnthalpies3[i][k][j] = _INFINITY;
-                } else {
-                    dangleEntropies3 [i][k][j] = readDouble(*tp->dangle_ds );
-                    dangleEnthalpies3[i][k][j] = readDouble(*tp->dangle_dh );
-                    if(!isFinite(dangleEntropies3[i][k][j]) || !isFinite(dangleEnthalpies3[i][k][j])) {
-                        dangleEntropies3 [i][k][j] = -1.0;
-                        dangleEnthalpies3[i][k][j] = _INFINITY;
-                    }
-                }
-            }
-
-    for (i = 0; i < 5; ++i)
-        for (j = 0; j < 5; ++j)
-            for (k = 0; k < 5; ++k) {
-                if (i == 4 || j == 4) {
-                    dangleEntropies5 [i][j][k] = -1.0;
-                    dangleEnthalpies5[i][j][k] = _INFINITY;
-                } else if (k == 4) {
-                    dangleEntropies5 [i][j][k] = -1.0;
-                    dangleEnthalpies5[i][j][k] = _INFINITY;
-                } else {
-                    dangleEntropies5 [i][j][k] = readDouble(*tp->dangle_ds );
-                    dangleEnthalpies5[i][j][k] = readDouble(*tp->dangle_dh);
-                    if(!isFinite(dangleEntropies5[i][j][k]) || !isFinite(dangleEnthalpies5[i][j][k])) {
-                        dangleEntropies5 [i][j][k] = -1.0;
-                        dangleEnthalpies5[i][j][k] = _INFINITY;
-                    }
-                }
-            }
-}
-
-static void
-getLoop(double hairpinLoopEntropies[30], double interiorLoopEntropies[30], double bulgeLoopEntropies[30],
-        double hairpinLoopEnthalpies[30], double interiorLoopEnthalpies[30], double bulgeLoopEnthalpies[30],
-        const thal_parameters *tp)
-{
-    int k;
-    tp->loops_ds->seekg(std::ios_base::beg);
-    tp->loops_dh->seekg(std::ios_base::beg);
-    for (k = 0; k < 30; ++k) {
-        readLoop(*tp->loops_ds, &interiorLoopEntropies[k],
-                 &bulgeLoopEntropies   [k],
-                 &hairpinLoopEntropies [k]);
-        readLoop(*tp->loops_ds, &interiorLoopEnthalpies[k],
-                 &bulgeLoopEnthalpies   [k],
-                 &hairpinLoopEnthalpies [k]);
-    }
-}
-
-static void
-getTstack(double tstackEntropies [5][5][5][5],
-          double tstackEnthalpies[5][5][5][5], const thal_parameters *tp)
-{
-    int i1, j1, i2, j2;
-    tp->tstack_tm_inf_ds->seekg(std::ios_base::beg);
-    tp->tstack_dh->seekg(std::ios_base::beg);
-    for (i1 = 0; i1 < 5; ++i1)
-        for (i2 = 0; i2 < 5; ++i2)
-            for (j1 = 0; j1 < 5; ++j1)
-                for (j2 = 0; j2 < 5; ++j2)
-                    if (i1 == 4 || j1 == 4) {
-                        tstackEnthalpies[i1][i2][j1][j2] = _INFINITY;
-                        tstackEntropies [i1][i2][j1][j2] = -1.0;
-                    } else if (i2 == 4 || j2 == 4) {
-                        tstackEntropies [i1][i2][j1][j2] = 0.00000000001;
-                        tstackEnthalpies[i1][i2][j1][j2] = 0.0;
-                    } else {
-                        tstackEntropies [i1][i2][j1][j2] = readDouble(*tp->tstack_tm_inf_ds);
-                        tstackEnthalpies[i1][i2][j1][j2] = readDouble(*tp->tstack_dh);
-                        if (   !isFinite(tstackEntropies [i1][i2][j1][j2])
-                               || !isFinite(tstackEnthalpies[i1][i2][j1][j2]) ) {
-                            tstackEntropies [i1][i2][j1][j2] = -1.0;
-                            tstackEnthalpies[i1][i2][j1][j2] = _INFINITY;
-                        }
-                    }
-}
-
-static void
-getTstack2(double tstack2Entropies [5][5][5][5],
-           double tstack2Enthalpies[5][5][5][5], const thal_parameters *tp )
-{
-
-    int i1, j1, i2, j2;
-    tp->tstack2_ds->seekg(std::ios_base::beg);
-    tp->tstack2_dh->seekg(std::ios_base::beg);
-    for (i1 = 0; i1 < 5; ++i1)
-        for (i2 = 0; i2 < 5; ++i2)
-            for (j1 = 0; j1 < 5; ++j1)
-                for (j2 = 0; j2 < 5; ++j2)
-                    if (i1 == 4 || j1 == 4)  {
-                        tstack2Enthalpies[i1][i2][j1][j2] = _INFINITY;
-                        tstack2Entropies [i1][i2][j1][j2] = -1.0;
-                    } else if (i2 == 4 || j2 == 4) {
-                        tstack2Entropies [i1][i2][j1][j2] = 0.00000000001;
-                        tstack2Enthalpies[i1][i2][j1][j2] = 0.0;
-                    } else {
-                        tstack2Entropies [i1][i2][j1][j2] = readDouble(*tp->tstack2_ds);
-                        tstack2Enthalpies[i1][i2][j1][j2] = readDouble(*tp->tstack2_dh);
-                        if (!isFinite(tstack2Entropies[i1][i2][j1][j2]) || !isFinite(tstack2Enthalpies[i1][i2][j1][j2])) {
-                            tstack2Entropies [i1][i2][j1][j2] = -1.0;
-                            tstack2Enthalpies[i1][i2][j1][j2] = _INFINITY;
-                        }
-                    }
-}
-
-static void
-getTriloop(loop_prmtr& triloopEntropies,
-           loop_prmtr& triloopEnthalpies, int* num, const thal_parameters *tp )
-{
-    triloopEntropies .clear();  // ?? dont reuse
-    triloopEnthalpies.clear();
-
-    tp->triloop_ds->seekg(std::ios_base::beg);
-    tp->triloop_dh->seekg(std::ios_base::beg);
-
-    while ( readTLoop(tp->triloop_ds, triloopEntropies , true ) ;
-    while ( readTLoop(tp->triloop_dh, triloopEnthalpies, true ) ;
-}
-
-static void
-getTetraloop(loop_prmtr& tetraloopEntropies,
-             loop_prmtr& tetraloopEnthalpies, int* num, const thal_parameters *tp )
-{
-    tetraloopEntropies .clear();  // ?? dont reuse
-    tetraloopEnthalpies.clear();
-
-    tp->triloop_ds->seekg(std::ios_base::beg);
-    tp->triloop_dh->seekg(std::ios_base::beg);
-
-    while ( readTLoop(tp->triloop_ds, tetraloopEntropies , false ) ;
-    while ( readTLoop(tp->triloop_dh, tetraloopEnthalpies, false ) ;
-}
-
-/* Read the thermodynamic values (parameters) from the parameter files
-   in the directory specified by 'path'.  Return 0 on success and -1
-   on error. The thermodynamic values are stored in multiple static
-   variables. */
-int
-get_thermodynamic_values(const thal_parameters *tp, thal_results *o)
-{
-    if (setjmp(_jmp_buf) != 0) {
-        return -1;
-    }
-    getStack    ( stackEntropies,     stackEnthalpies,     tp, o);
-    /* verifyStackTable(stackEntropies, "entropy");
-       verifyStackTable(stackEnthalpies, "enthalpy"); */ /* this is for code debugging */
-    getStackint2( stackint2Entropies, stackint2Enthalpies, tp, o);
-    getDangle   ( dangleEntropies3,     dangleEnthalpies3,     dangleEntropies5,   dangleEnthalpies5, tp, o);
-    getLoop     ( hairpinLoopEntropies, interiorLoopEntropies, bulgeLoopEntropies, hairpinLoopEnthalpies,
-                  interiorLoopEnthalpies, bulgeLoopEnthalpies, tp, o);
-    getTstack   ( tstackEntropies,     tstackEnthalpies, tp, o);
-    getTstack2  ( tstack2Entropies,    tstack2Enthalpies, tp, o);
-    getTriloop  (&triloopEntropies,   &triloopEnthalpies, &numTriloops, tp, o);
-    getTetraloop(&tetraloopEntropies, &tetraloopEnthalpies, &numTetraloops, tp, o);
-    /* getting the AT-penalties */
-    tableStartATS(AT_S, atpS);
-    tableStartATH(AT_H, atpH);
-
-    return 0;
-}
 
 
 
 //                    ***************   CProgParam_ThAl   ***********************
 
-/* Set default args */
-void
-CProgParam_ThAl::set_defaults( )
-{
-    this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-    this->maxLoop  = MAX_LOOP;
-    this->mv       = 50; /* mM */
-    this->dv       = 0.0; /* mM */
-    this->dntp     = 0.8; /* mM */
-    this->dna_conc = 50; /* nM */
-    this->temp     = TEMP_KELVIN; /* Kelvin */
-    this->dimer    = 1; /* by default dimer structure is calculated */
-}
 
 /* Set default args for oligo */
 void
 CProgParam_ThAl::set_oligo_defaults( )
-{
-    this->type     = type::Any; /* thal_alignment_type THAL_ANY */
-    this->maxLoop  = MAX_LOOP;
-    this->mv       = 50; /* mM */
-    this->dv       = 0.0; /* mM */
-    this->dntp     = 0.0; /* mM the only difference !!!! */
-    this->dna_conc = 50; /* nM */
-    this->temp     = TEMP_KELVIN; /* Kelvin */
-    this->dimer    = 1; /* by default dimer structure is calculated */
-}
-
 
 //                    ***************   ThAl impl  ***********************
-
-/* table where bp-s enthalpies, that retrieve to the most stable Tm, are saved */
-#ifdef EnthalpyDPT
-# undef EnthalpyDPT
-#endif
-#define EnthalpyDPT(i, j) enthalpyDPT[(j) + ((i-1)*len3) - (1)]
-
-/* table where bp-s entropies, that retrieve to the most stable Tm, are saved */
-#ifdef EntropyDPT
-# undef EntropyDPT
-#endif
-#define EntropyDPT(i, j) entropyDPT[(j) + ((i-1)*len3) - (1)]
-
-/* entropies of most stable hairpin terminal bp */
-#ifndef SEND5
-# define SEND5(i) send5[i]
+#ifndef MIN_HRPN_LOOP
+#define MIN_HRPN_LOOP 3 /*  minimum size of hairpin loop */
 #endif
 
-/* enthalpies of most stable hairpin terminal bp */
-#ifndef HEND5
-# define HEND5(i) hend5[i]
-#endif
+class ThAl
+{
+    static constexpr double  SMALL_NON_ZERO {0.000001};
+    static int DBL_EQ(double X, double Y) { return (X - Y) < SMALL_NON_ZERO ? 1 : 2; /* 1 when numbers are equal */}
+    static int max5(double a, double b, double c, double d, double e)
+    {
+        if(a > b &&
+           a > c &&
+           a > d &&
+           a > e    ) return 1;
+        else if(b > c &&
+                b > d &&
+                b > e    ) return 2;
+        else if(c > d &&
+                c > e    ) return 3;
+        else if(d > e    ) return 4;
+        else return 5;
+    }
 
-#define bpIndx(a, b) BPI[a][b] /* for traceing matrix BPI */
-#define atPenaltyS(a, b) atpS[a][b]
-#define atPenaltyH(a, b) atpH[a][b]
+    static constexpr double R    = 1.9872;          /* cal/Kmol */
+    static constexpr double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
+    static constexpr double ILAH = 0.0;             /* Internal Loop EntHalpy Asymmetry correction */
+    static constexpr double AT_H = 2200.0;          /* AT penalty */
+    static constexpr double AT_S = 6.9;             /* AT penalty */
+    static constexpr double MinEntropyCutoff = -2500.0; /* to filter out non-existing entropies */
+    static constexpr double MinEntropy       = -3224.0; /* initiation */
+    static constexpr double G2               = 0.0; /* structures w higher G are considered to be unstabile */
+    static constexpr ABSOLUTE_ZERO    = 273.15;
+    static constexpr int    MIN_LOOP         = 0;
 
-#define SMALL_NON_ZERO 0.000001
-#define DBL_EQ(X,Y) (((X) - (Y)) < (SMALL_NON_ZERO) ? (1) : (2)) /* 1 when numbers are equal */
+    /* w/o init not constant anymore, cause for unimolecular and bimolecular foldings there are different values */
+    double dplx_init_H;    /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
+    double dplx_init_S;    /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
+    double saltCorrection; /* value calculated by saltCorrectS,
+                                     includes correction for monovalent and divalent cations */
+    double RC;             /* universal gas constant multiplied w DNA conc - for melting temperature */
+    double SHleft;         /* var that helps to find str w highest melting temperature TODO not initialized !!!!??  */
+    int bestI, bestJ;      /* starting position of most stable str */
 
-static const double R    = 1.9872;          /* cal/Kmol */
-static const double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
-static const double ILAH = 0.0;             /* Internal Loop EntHalpy Asymmetry correction */
-static const double AT_H = 2200.0;          /* AT penalty */
-static const double AT_S = 6.9;             /* AT penalty */
-static const double MinEntropyCutoff = -2500.0; /* to filter out non-existing entropies */
-static const double MinEntropy       = -3224.0; /* initiation */
-static const double G2               = 0.0; /* structures w higher G are considered to be unstabile */
-       const double ABSOLUTE_ZERO    = 273.15;
-       const int    MIN_LOOP         = 0;
+    seq            oligo1,  oligo2;   /* inserted oligo sequenced */
+    seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
+    static int    len1, len2, len3;   /* length of sequense 1 and 2 */
+
+    struct tracer /* structure only for tracebacku - unimolecular str */
+    {
+        int i;
+        int j;
+        int mtrx; /* [0 1] EntropyDPT/EnthalpyDPT*/
+        struct tracer* next;
+    };
+    static void push(struct tracer** stack, int i, int j, int mtrx)
+    {
+        struct tracer* new_top;
+        new_top = (struct tracer*) safe_malloc(sizeof(struct tracer), o);
+        new_top->i = i;
+        new_top->j = j;
+        new_top->mtrx = mtrx;
+        new_top->next = *stack;
+        *stack = new_top;
+    }
+
+    std::vector<double> enthalpyDPT, entropyDPT,    /* DyProg matrix for values of enthalpy and entropy */
+                        send5,       hend5;         /* calc 5'  */
+
+    /// table where bp-s enthalpies, that retrieve to the most stable Tm, are saved
+    double & EnthalpyDPT(int i, int j)   {  return enthalpyDPT[(j) + ((i-1)*len3) - (1)];  }
+
+    /// table where bp-s entropies, that retrieve to the most stable Tm, are saved
+    double & EntropyDPT (int i, int j)   {  return entropyDPT [(j) + ((i-1)*len3) - (1)];  }
+
+    /// entropies of most stable hairpin terminal bp
+    double & SEND5 (int i)   {  return send5[i];  }
+
+    /// enthalpies of most stable hairpin terminal bp
+    double & HEND5 (int i)   {  return hend5[i];  }
+
+    bool & bpIndx (unsigned char a, unsigned char b)   {  return BPI[a][b];  } /* for traceing matrix BPI ?? */
+    double & atPenaltyS (unsigned char a, unsigned char b)   {  return atpS[a][b];  }
+    double & atPenaltyH (unsigned char a, unsigned char b)   {  return atpH[a][b];  }
+
+    void initMatrix() ///< initiates DPTables of entropy and enthalpy for dimer
+    {
+        for (int i = 1; i <= len1; ++i)                         // 1 !!
+        for (int j = 1; j <= len2; ++j)                         // 1 !!
+            if (bpIndx(numSeq1[i], numSeq2[j]) == 0)            // bpIndx(a, b) BPI[a][b]
+            {              //  mismatch
+                EnthalpyDPT(i, j) = _INFINITY;                  // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
+                EntropyDPT (i, j) = -1.0;
+            } else
+            {              // watson crick match
+                EnthalpyDPT(i, j) = 0.0;
+                EntropyDPT (i, j) = MinEntropy;
+            }
+    }
+
+    void initMatrix2() ///< initiates DPTables of entropy and enthalpy for monomer
+    {
+        for (int i = 1; i <= len1; ++i)                       // 1 !!
+        for (int j = i; j <= len2; ++j)                       // 1 !!
+            if ( j - i < MIN_HRPN_LOOP + 1 ||                 // i, j too near, loop too short
+                 (bpIndx(numSeq1[i], numSeq1[j]) == 0))        // bpIndx(a, b) BPI[a][b]
+            {            //  mismatch
+                EnthalpyDPT(i, j) = _INFINITY;                 // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
+                EntropyDPT (i, j) = -1.0;
+            } else
+            {              // watson crick match
+                EnthalpyDPT(i, j) = 0.0;
+                EntropyDPT (i, j) = MinEntropy;
+            }
+    }
+        public:
+
+};
+
 
 
 static void maxTM(int i, int j); /* finds max Tm while filling the dyn progr table using stacking S and stacking H (dimer) */
@@ -614,8 +691,6 @@ static void maxTM2(int i, int j); /* finds max Tm while filling the dyn progr ta
 
 static double Ss(int i, int j, int k); /* returns stack entropy */
 static double Hs(int i, int j, int k); /* returns stack enthalpy */
-
-static int max5(double, double, double, double, double);
 
 /* traceback for dimers */
 static void traceback(int i, int j, double RT, int* ps1, int* ps2, int maxLoop, thal_results* o);
@@ -634,8 +709,6 @@ static int equal(double a, double b);
 
 static void strcatc(char*, char);
 
-static void push(struct tracer**, int, int, int, thal_results*); /* to add elements to struct */
-
 /* terminal bp for monomer structure */
 static void calc_terminal_bp(double temp);
 
@@ -652,162 +725,8 @@ static double Sd3(int,int); /* returns thermodynamic value (S) for 3' dangling e
 static double Ststack(int,int); /* returns entropy value for terminal stack */
 static double Htstack(int,int); /* returns enthalpy value for terminal stack */
 
-static double atpS[5][5]; /* AT penalty */
-static double atpH[5][5]; /* AT penalty */
-static std::vector<double> send5, hend5;      /* calc 5'  */
-/* w/o init not constant anymore, cause for unimolecular and bimolecular foldings there are different values */
-static double dplx_init_H; /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
-static double dplx_init_S; /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
-static double saltCorrection; /* value calculated by saltCorrectS, includes correction for monovalent and divalent cations */
-static double RC; /* universal gas constant multiplied w DNA conc - for melting temperature */
-static double SHleft; /* var that helps to find str w highest melting temperature */
-static int bestI, bestJ; /* starting position of most stable str */
-
-static std::vector<double> enthalpyDPT, entropyDPT;    /* matrix for values of enthalpy and entropy */
-
-seq            oligo1,  oligo2;   /* inserted oligo sequenced */
-seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
-static int    len1, len2, len3;   /* length of sequense 1 and 2 */
-                                  /* 17.02.2009 int temponly;*/ /* print only temperature of the predicted structure */
-
-static double dangleEntropies3[5][5][5]; /* thermodynamic paramteres for 3' dangling ends */
-static double dangleEnthalpies3[5][5][5]; /* ther params for 3' dangling ends */
-static double dangleEntropies5[5][5][5];  /* ther params for 5' dangling ends */
-static double dangleEnthalpies5[5][5][5]; /* ther params for 5' dangling ends */
-static double stackEntropies[5][5][5][5]; /* ther params for perfect match pairs */
-static double stackEnthalpies[5][5][5][5]; /* ther params for perfect match pairs */
-static double stackint2Entropies[5][5][5][5]; /*ther params for perfect match and internal mm */
-static double stackint2Enthalpies[5][5][5][5]; /* ther params for perfect match and internal mm*/
-static double interiorLoopEntropies[30]; /* interior loop params according to length of the loop */
-static double bulgeLoopEntropies[30]; /* bulge loop params according to length of the loop */
-static double hairpinLoopEntropies[30]; /* hairpin loop params accordint to length of the loop */
-static double interiorLoopEnthalpies[30]; /* same as interiorLoopEntropies but values of entropy */
-static double bulgeLoopEnthalpies[30]; /* same as bulgeLoopEntropies but values of entropy */
-static double hairpinLoopEnthalpies[30]; /* same as hairpinLoopEntropies but values of entropy */
-static double tstackEntropies[5][5][5][5]; /* ther params for terminal mismatches */
-static double tstackEnthalpies[5][5][5][5]; /* ther params for terminal mismatches */
-static double tstack2Entropies[5][5][5][5]; /* ther params for internal terminal mismatches */
-static double tstack2Enthalpies[5][5][5][5]; /* ther params for internal terminal mismatches */
 
 
-#define CHECK_ERROR(COND,MSG) if (COND) { strcpy(o->msg, MSG); errno = 0; longjmp(_jmp_buf, 1); }
-#define THAL_OOM_ERROR { strcpy(o->msg, "Out of memory"); errno = ENOMEM; longjmp(_jmp_buf, 1); }
-
-static jmp_buf _jmp_buf;
-/* memory stuff */
-
-static void* 
-safe_malloc(size_t n, thal_results *o)
-{
-   void* ptr;
-   if (!(ptr = malloc(n))) {
-#ifdef DEBUG
-      fputs("Error in malloc()\n", stderr);
-#endif
-      THAL_OOM_ERROR;
-   }
-   return ptr;
-}
-
-static void* 
-safe_realloc(void* ptr, size_t n, thal_results *o)
-{
-   ptr = realloc(ptr, n);
-   if (ptr == NULL) {
-#ifdef DEBUG
-      fputs("Error in realloc()\n", stderr);
-#endif
-      THAL_OOM_ERROR;
-   }
-   return ptr;
-}
-
-static int 
-max5(double a, double b, double c, double d, double e)
-{
-        if(a > b &&
-           a > c &&
-           a > d &&
-           a > e    ) return 1;
-   else if(b > c &&
-           b > d &&
-           b > e    ) return 2;
-   else if(c > d &&
-           c > e    ) return 3;
-   else if(d > e    ) return 4;
-   else return 5;
-}
-
-static void 
-push(struct tracer** stack, int i, int j, int mtrx, thal_results* o)
-{
-   struct tracer* new_top;
-   new_top = (struct tracer*) safe_malloc(sizeof(struct tracer), o);
-   new_top->i = i;
-   new_top->j = j;
-   new_top->mtrx = mtrx;
-   new_top->next = *stack;
-   *stack = new_top;
-}
-
-
-static void
-tableStartATS(double atp_value, double atpS[5][5])
-{
-
-   int i, j;
-   for (i = 0; i < 5; ++i)
-     for (j = 0; j < 5; ++j)
-       atpS[i][j] = 0.00000000001;
-   atpS[0][3] = atpS[3][0] = atp_value;
-}
-
-
-static void 
-tableStartATH(double atp_value, double atpH[5][5])
-{
-
-   int i, j;
-   for (i = 0; i < 5; ++i)
-     for (j = 0; j < 5; ++j)
-       atpH[i][j] = 0.0;
-
-   atpH[0][3] = atpH[3][0] = atp_value;
-}
-
-static void
-initMatrix() ///< initiates thermodynamic parameter tables of entropy and enthalpy for dimer
-{
-   int i, j;
-   for (i = 1; i <= len1; ++i) {                       // 1 !!
-      for (j = 1; j <= len2; ++j) {                    // 1 !!
-         if (bpIndx(numSeq1[i], numSeq2[j]) == 0)  {   // bpIndx(a, b) BPI[a][b] , mismatch
-            EnthalpyDPT(i, j) = _INFINITY;             // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
-            EntropyDPT(i, j) = -1.0;
-         } else {                                      // watson crick match
-            EnthalpyDPT(i, j) = 0.0;
-            EntropyDPT(i, j) = MinEntropy;
-         }
-      }
-   }
-}
-
-static void
-initMatrix2() ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
-{
-   int i, j;
-   for (i = 1; i <= len1; ++i)                           // 1 !!
-     for (j = i; j <= len2; ++j)                         // 1 !!
-       if ( j - i < MIN_HRPN_LOOP + 1 ||                 // i, j too near, loop too short
-           (bpIndx(numSeq1[i], numSeq1[j]) == 0))        // bpIndx(a, b) BPI[a][b] , mismatch
-       {
-          EnthalpyDPT(i, j) = _INFINITY;                 // enthalpyDPT[(j) + ((i-1)*len3) - (1)]
-          EntropyDPT(i, j) = -1.0;
-       } else {
-          EnthalpyDPT(i, j) = 0.0;
-          EntropyDPT(i, j) = MinEntropy;
-       }
-}
 
 static void 
 fillMatrix(int maxLoop)                   /* calc-s thermod values into dynamic progr table (dimer) */
