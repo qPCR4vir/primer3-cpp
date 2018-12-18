@@ -1586,7 +1586,7 @@ class ThAl
     }
 
     struct harpin{int i,j,mtrx;};
-    void tracebacku(std::vector<int>& bp, int maxLoop,thal_results* o) ///< traceback for unimolecular hairpins structure
+    void tracebacku(std::vector<int>& bp, int maxLoop) ///< traceback for unimolecular hairpins structure
     {
         std::stack<harpin> harpins;                  // struct tracer *top, *stack = NULL;
         harpins.emplace(len1,0,1);                   // push(&stack,len1, 0, 1);
@@ -1717,7 +1717,12 @@ class ThAl
     }
 
    /// traceback for dimers
-    void traceback(int i, int j, double RT, std::vector<int>&  ps1, std::vector<int>& ps2, int maxLoop )
+    void traceback(int i,
+                   int j,
+                   double RT,
+                   std::vector<int>&  ps1,
+                   std::vector<int>& ps2,
+                   int maxLoop )
     {
         double SH[2];
         ps1[i - 1] = j;
@@ -1771,15 +1776,20 @@ class ThAl
         }
     }
 
-    /* prints ascii output of dimer structure */
-    char *
-    drawDimer(std::vector<int>& ps1, std::vector<int>& ps2, double temp, double H, double S, const CProgParam_ThAl::mode mode, double t37, thal_results *o)
+    /// prints ascii output of dimer structure
+    std::string drawDimer(std::vector<int>& ps1,       ///<
+                          std::vector<int>& ps2,
+                          double temp,
+                          double H,
+                          double S,
+                          const CProgParam_ThAl::mode mode,
+                          double t37,
+                          thal_results *o)
     {
-        int  ret_space = 0;
+        int ret_space = 0;
         int ret_nr, ret_pr_once;
         std::string ret_str[4];
         int i, j, k, numSS1, numSS2, N;
-        char* duplex[4];
         double G, t;
         t = G = 0;
         if (!isFinite(temp)){
@@ -1819,11 +1829,8 @@ class ThAl
             }
         }
 
-        duplex[0] = (char*) safe_malloc(len1 + len2 + 1, o);
-        duplex[1] = (char*) safe_malloc(len1 + len2 + 1, o);
-        duplex[2] = (char*) safe_malloc(len1 + len2 + 1, o);
-        duplex[3] = (char*) safe_malloc(len1 + len2 + 1, o);
-        duplex[0][0] = duplex[1][0] = duplex[2][0] = duplex[3][0] = 0;
+        std::string duplex[4];
+        for (auto& dpl: duplex) dpl.reserve(len1 + len2 + 1);
 
         i = 0;
         numSS1 = 0;
@@ -2182,35 +2189,40 @@ public:
 
 };
 
-static void save_append_string(char** ret, int *space, thal_results *o, const char *str);
-
-static void save_append_char(char** ret, int *space, thal_results *o, const char str);
-
-static void strcatc(char*, char);
 
 static void
-save_append_string(char** ret, int *space, thal_results *o, const char *str) {
-  int xlen, slen;
-  if (str == NULL) {
-    return;
-  }
-  if (*ret == NULL) {
+save_append_string(char** ret,         ///< string to which str will be added
+                   int *space,         ///< reserved among of memmory before and after
+                   thal_results *o,
+                   const char *str    ///< string to be added to ret
+                   )
+{
+  if (str == NULL) {     return;   }
+  if (*ret == NULL)
+  {
     *ret = (char *) safe_malloc(sizeof(char)*500, o);
     *ret[0] = '\0';
     *space = 500;
   }
-  xlen = strlen(*ret);
-  slen = strlen(str);
-  if (xlen + slen + 1 > *space) {
+    int xlen = strlen(*ret);
+    int slen = strlen(str);
+
+  if (xlen + slen + 1 > *space)
+  {
     *space += 4 * (slen + 1);
     *ret = (char *) safe_realloc(*ret, *space, o);
   }
   strcpy(*ret + xlen, str);
   return;
 }
-
+/// calls save_append_string
 static void
-save_append_char(char** ret, int *space, thal_results *o, const char str) {
+save_append_char(char** ret,         ///< string to which str will be added
+                 int *space,         ///< reserved among of memmory before and after
+                 thal_results *o,
+                 const char str      ///< char to be added to ret
+                 )
+{
   char fix[3];
   fix[0] = str;
   fix[1] = '\0';
