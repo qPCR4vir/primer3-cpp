@@ -1910,23 +1910,17 @@ class ThAl
             printf("STR\t");             printf("%s\n", duplex[2].c_str());
             printf("STR\t");             printf("%s\n", duplex[3].c_str());
         }
-        if (mode == THL_STRUCT) {
-            ret_str[3] = NULL;
-            ret_str[0] = (char*) safe_malloc(len1 + len2 + 10, o);
-            ret_str[1] = (char*) safe_malloc(len1 + len2 + 10, o);
-            ret_str[2] = (char*) safe_malloc(len1 + len2 + 10, o);
-            ret_str[0][0] = ret_str[1][0] = ret_str[2][0] = '\0';
+        if (mode == CProgParam_ThAl::mode::STRUCT)
+        {
+            std::string ret_str[4];                                //  not just max(len1, len2)  ???
+            for (auto & rs: ret_str) rs.reserve(len1 + len2 + 10); // more than duplex , ret_str[3] = NULL;     ?????????????
 
-            /* Join top primer */
-            strcpy(ret_str[0], "   ");
-            strcat(ret_str[0], duplex[0]);
-            ret_nr = 0;
-            while (duplex[1][ret_nr] != '\0') {
-                if (duplex[1][ret_nr] == 'A' || duplex[1][ret_nr] == 'T' ||
-                    duplex[1][ret_nr] == 'C' || duplex[1][ret_nr] == 'G' ||
-                    duplex[1][ret_nr] == '-') {
-                    ret_str[0][ret_nr + 3] = duplex[1][ret_nr];
-                }
+            ret_str[0] = "   " + duplex[0];     /* Join top primer */
+            int ret_nr = 0, len = duplex[0].length();
+            for ( char c: duplex[1])    // if the nt is in the duplex[1] write it (rescue nt from duplex[1] into ret_str[0])
+            {
+                if (len <= ret_nr) break;                         // truncate ret_str[0] to the length of duplex[0] (+ 3)
+                if (c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')      ret_str[0][ret_nr + 3] = c;
                 ret_nr++;
             }
             if (strlen(duplex[1]) > strlen(duplex[0]))  // truncate ret_str[0] to the length of duplex[0] (+ 3)
