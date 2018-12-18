@@ -1984,19 +1984,31 @@ class ThAl
         return ret;
     }
 
-/* prints ascii output of hairpin structure */
-    std::string
-    drawHairpin(std::vector<int>& bp, double mh, double ms,
-                const CProgParam_ThAl::mode mode, double temp, thal_results *o)
+/* prints ascii output of hairpin structure
+
+Calculated thermodynamical parameters for dimer:	16	dS = -146.99	dH = -50600	dG = -5011.14	t = 71.0918
+SEQ	//////----\\\\\\
+STR	CCGCAGTAAGCTGCGG
+
+*/
+
+    std::string drawHairpin(std::vector<int>& bp,
+                            double mh,
+                            double ms,
+                            const CProgParam_ThAl::mode mode,
+                            double temp,
+                            thal_results *o)
     {
         int  ret_space = 0;
         std::string ret_str;
-        int ret_last_l, ret_first_r, ret_center, ret_left_end, ret_right_start, ret_left_len, ret_right_len;
+        int ret_last_l,    ret_first_r,
+            ret_center,    ret_left_end,    ret_right_start,
+            ret_left_len,  ret_right_len;
+
         int ret_add_sp_l, ret_add_sp_r;
         char ret_center_char;
-        /* Plain text */
-        int i, N;
-        N = 0;
+
+                                                                /* Plain text */
         double mg, t;
         if (!isFinite(ms) || !isFinite(mh)) {
             if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
@@ -2015,18 +2027,13 @@ class ThAl
             }
         } else
         {
-            if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
-            {
-                for (i = 1; i < len1; ++i)
-                {
-                    if(bp[i-1] > 0) N++;
-                }
-            } else {
-                for (i = 1; i < len1; ++i)     // both branch equal ???
-                {
-                    if(bp[i-1] > 0) N++;
-                }
-            }
+            int  N = 0;
+            if((mode != CProgParam_ThAl::mode::FAST   ) &&
+               (mode != CProgParam_ThAl::mode::DEBUG_F)     )
+                     for (i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
+            else
+                     for (i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
+
             t = (mh / (ms + (((N/2)-1) * saltCorrection))) - ABSOLUTE_ZERO;
 
             if((mode != CProgParam_ThAl::mode::FAST) &&
@@ -2037,14 +2044,11 @@ class ThAl
                 o->temp = (double) t;
 
                 if (mode != CProgParam_ThAl::mode::STRUCT)
-                {
                     printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
                            len1, (double) ms, (double) mh, (double) mg, (double) t);
-                } else
-                {
+                else
                     sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
                             (double) t, (double) mg, (double) mh, (double) ms);
-                }
             }
             else
             {
@@ -2052,33 +2056,29 @@ class ThAl
                 return {};
             }
         }
-        /* plain-text output */
+                                                        /* plain-text output */
         std::string asciiRow (len1, '0');
-        for(i = 1; i < len1+1; ++i) {
-            if(bp[i-1] == 0) {
-                asciiRow[(i-1)] = '-';
-            } else {
-                if(bp[i-1] > (i-1)) {
-                    asciiRow[(bp[i-1]-1)]='\\';
-                } else  {
-                    asciiRow[(bp[i-1]-1)]='/';
-                }
-            }
-        }
-        if ((mode == CProgParam_ThAl::mode::GENERAL) || (mode == CProgParam_ThAl::mode::DEBUG))
+        for(i = 1; i < len1+1; ++i)
         {
-            printf("SEQ\t");
-            for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
+            if( bp[i-1] == 0)            asciiRow[(i-1)]       =  '-' ;
+            else
+            if( bp[i-1] > (i-1))         asciiRow[(bp[i-1]-1)] =  '\\';
+            else                         asciiRow[(bp[i-1]-1)] =  '/' ;
+        }
+        if ((mode == CProgParam_ThAl::mode::GENERAL) ||
+            (mode == CProgParam_ThAl::mode::DEBUG  )   )
+        {
+            printf("SEQ\t");        for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
             printf("\nSTR\t%s\n", oligo1);
         }
-        if (mode == CProgParam_ThAl::mode::STRUCT) {
-            ret_str = {};
+        if (mode == CProgParam_ThAl::mode::STRUCT)
+        {
+            ret_str = ret_para;
 
-            //save_append_string(&ret_str, &ret_space, o, ret_para);
+            ret_last_l      = -1  ;
+            ret_first_r     = -1  ;
+            ret_center_char = '|' ;
 
-            ret_last_l = -1;
-            ret_first_r = -1;
-            ret_center_char = '|';
             for(i = 0; i < len1; ++i)
             {
                 if ( asciiRow[i] == '/')          ret_last_l  = i;
