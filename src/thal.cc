@@ -1672,7 +1672,8 @@ class ThAl
                         }
                 }
             }
-            else if(top.mtrx==0)
+            else
+            if(top.mtrx==0)
             {
                 bp[i - 1] = j;
                 bp[j - 1] = i;
@@ -1682,12 +1683,13 @@ class ThAl
                 SH2[0] = -1.0;
                 SH2[1] = _INFINITY;
                 CBI(i, j, SH2, 2, maxLoop);
+
                 if (equal(EntropyDPT (i, j), Ss(i, j, 2) + EntropyDPT (i + 1, j - 1)) &&
                     equal(EnthalpyDPT(i, j), Hs(i, j, 2) + EnthalpyDPT(i + 1, j - 1)))
                 {
                     harpins.emplace(i + 1, j - 1, 0 );
                 }
-                else if (equal(EntropyDPT(i, j), SH1[0]) && equal(EnthalpyDPT(i, j), SH1[1]));
+                else if (equal(EntropyDPT(i, j), SH1[0]) && equal(EnthalpyDPT(i, j), SH1[1]));     // todo nothing??
                 else if (equal(EntropyDPT(i, j), SH2[0]) && equal(EnthalpyDPT(i, j), SH2[1]))
                 {
                     for (int done = 0, d = j - i - 3; d >= MIN_HRPN_LOOP + 1 && d >= j - i - 2 - maxLoop && !done; --d)
@@ -1697,6 +1699,7 @@ class ThAl
                             EntropyEnthalpy[0] = -1.0;
                             EntropyEnthalpy[1] = _INFINITY;
                             calc_bulge_internal2(i, j, ii, jj,EntropyEnthalpy,1,maxLoop);
+
                             if (equal(EntropyDPT (i, j), EntropyEnthalpy[0] + EntropyDPT (ii, jj)) &&
                                 equal(EnthalpyDPT(i, j), EntropyEnthalpy[1] + EnthalpyDPT(ii, jj)))
                             {
@@ -1713,11 +1716,9 @@ class ThAl
         }
     }
 
-/* traceback for dimers */
-    static void
-    traceback(int i, int j, double RT, std::vector<int>&  ps1, std::vector<int>& ps2, int maxLoop, thal_results* o)
+   /// traceback for dimers
+    void traceback(int i, int j, double RT, std::vector<int>&  ps1, std::vector<int>& ps2, int maxLoop )
     {
-        int d, ii, jj, done;
         double SH[2];
         ps1[i - 1] = j;
         ps2[j - 1] = i;
@@ -1726,30 +1727,35 @@ class ThAl
             SH[0] = -1.0;
             SH[1] = _INFINITY;
             LSH(i,j,SH);
-            if(equal(EntropyDPT(i,j),SH[0]) && equal(EnthalpyDPT(i,j),SH[1])) {
-                break;
-            }
-            done = 0;
-            if (i > 1 && j > 1 && equal(EntropyDPT (i,j), Ss(i - 1, j - 1, 1) + EntropyDPT (i - 1, j - 1)) &&
-                equal(EnthalpyDPT(i,j), Hs(i - 1, j - 1, 1) + EnthalpyDPT(i - 1, j - 1)))
+
+            if(equal(EntropyDPT(i,j),SH[0]) && equal(EnthalpyDPT(i,j),SH[1]))  {         break;         }
+
+            bool done = false;
+            if (i > 1 &&
+                j > 1 && equal(EntropyDPT (i,j), Ss(i - 1, j - 1, 1) + EntropyDPT (i - 1, j - 1)) &&
+                         equal(EnthalpyDPT(i,j), Hs(i - 1, j - 1, 1) + EnthalpyDPT(i - 1, j - 1))     )
             {
                 i = i - 1;
                 j = j - 1;
                 ps1[i - 1] = j;
                 ps2[j - 1] = i;
-                done = 1;
+                done = true;
             }
-            for (d = 3; !done && d <= maxLoop + 2; ++d) {
-                ii = i - 1;
-                jj = -ii - d + (j + i);
-                if (jj < 1) {
+            for (int d = 3; !done && d <= maxLoop + 2; ++d)
+            {
+                int ii = i - 1;
+                int jj = -ii - d + (j + i);
+                if (jj < 1)
+                {
                     ii -= abs(jj-1);
                     jj = 1;
                 }
-                for (; !done && ii > 0 && jj < j; --ii, ++jj) {
+                for (; !done && ii > 0 && jj < j; --ii, ++jj)
+                {
                     SH[0] = -1.0;
                     SH[1] = _INFINITY;
                     calc_bulge_internal(ii, jj, i, j, SH,1,maxLoop);
+
                     if (equal(EntropyDPT (i, j), SH[0]) &&
                         equal(EnthalpyDPT(i, j), SH[1]))
                     {
@@ -1757,7 +1763,7 @@ class ThAl
                         j = jj;
                         ps1[i - 1] = j;
                         ps2[j - 1] = i;
-                        done = 1;
+                        done = true;
                         break;
                     }
                 }
