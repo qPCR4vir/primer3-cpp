@@ -546,12 +546,14 @@ thal_parameters::~thal_parameters()
 int thal_parameters::set_defaults( )
 {
     this->m_thal_p->set_defaults();
+    this->m_thal_p->parse_thermodynamic_values();
     return 0;
 }
 
 int thal_parameters::load (const std::filesystem::path& dirname )
 {
     this->m_thal_p->load(dirname);
+    this->m_thal_p->parse_thermodynamic_values();
     return 0;
 }
 
@@ -635,7 +637,7 @@ class ThAl
                                      includes correction for monovalent and divalent cations */
     double RC;             /* universal gas constant multiplied w DNA conc - for melting temperature */
     double SHleft;         /* var that helps to find str w highest melting temperature TODO not initialized !!!!??  */
-    int bestI, bestJ;      /* starting position of most stable str */
+    int bestI=0,bestJ=0;  /* starting position of most stable str */
 
     seq            oligo1,  oligo2;   /* inserted oligo sequenced */
     seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
@@ -1996,7 +1998,7 @@ STR	CCGCAGTAAGCTGCGG
                             double ms,
                             const thal_args::mode mode,
                             double temp,
-                            thal_results *o)
+                            thal_results& o)
     {
         int  ret_space = 0;
         std::string ret_str;
@@ -2021,8 +2023,8 @@ STR	CCGCAGTAAGCTGCGG
                 }
             } else
             {
-                o->temp = 0.0;       /* lets use generalization here */
-                strcpy(o->msg, "No predicted sec struc for given seq\n");
+                o.temp = 0.0;       /* lets use generalization here */
+                o.msg = "No predicted sec struc for given seq\n" ;
             }
         } else
         {
@@ -2040,7 +2042,7 @@ STR	CCGCAGTAAGCTGCGG
             {
                 mg = mh - (temp * (ms + (((N/2)-1) * saltCorrection)));
                 ms = ms + (((N/2)-1) * saltCorrection);
-                o->temp = (double) t;
+                o.temp = (double) t;
 
                 if (mode != thal_args::mode::STRUCT)
                     printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
@@ -2051,7 +2053,7 @@ STR	CCGCAGTAAGCTGCGG
             }
             else
             {
-                o->temp = (double) t;
+                o.temp = (double) t;
                 return {};
             }
         }
@@ -2138,6 +2140,151 @@ STR	CCGCAGTAAGCTGCGG
 
 public:
 
+    ThAl( const seq& oligo_f,
+          const seq& oligo_r,
+          const thal_args& a,
+          const thal_args::mode modem,
+          thal_results &o)
+          : tp(*a.tp.m_thal_p), oligo1(oligo_f), oligo2(oligo_r)
+    {
+        if(a.type!=thal_args::type::end2) oligo1.swap(oligo2);     // 3
+        len1 = oligo1.length();
+        len2 = oligo2.length();
+        for(int i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
+        for(int i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
+
+        /*** INIT values for unimolecular and bimolecular structures ***/
+
+        if (a.type==thal_args::type::Hairpin)              /* unimolecular folding     4 */
+        {
+            len3 = len2 -1;
+            dplx_init_H = 0.0;                /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
+            dplx_init_S = -0.00000000001;     /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
+            RC=0;
+            send5.resize(len1);   hend5.resize(len1);
+        }
+        else //if(a->type!=4)                 /* all the others ----> hybridization of two oligos */
+        {                                     /* using the second reversed   */
+            reverse(oligo2);                  /* REVERSE oligo2, so it goes to dpt 3'->5' direction */
+            dplx_init_H = 200;
+            dplx_init_S = -5.7;
+            if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2))
+            {
+                RC = R  * log(a->dna_conc/1000000000.0);      // both symmetric
+            }
+            else
+            {
+                RC = R  * log(a->dna_conc/4000000000.0);
+            }
+        }
+        /*** Calc part of the salt correction ***/
+        saltCorrection=saltCorrectS(a.mv, a.dv, a.dntp); /* salt correction for entropy, must be multiplied with N, which is
+                                              the total number of phosphates in the duplex divided by 2; 8bp dplx N=7 */
+
+        numSeq1 = '\4' + nt2code(oligo1) + '\4'    /* mark first and last as N-s */
+        numSeq2 = '\4' + nt2code(oligo2) + '\4'    /* mark first and last as N-s */
+
+        if (a.type == thal_args::type::Hairpin)   /* 4 calculate structure of monomer */
+        {
+            enthalpyDPT.clear(); enthalpyDPT.resize( len1 * len2 );   // safe_realloc(ptr, m * n * sizeof(double)
+            entropyDPT.clear() ; entropyDPT.resize ( len1 * len2 );
+            initMatrix2();                   // initiates thermodynamic parameter tables of entropy and enthalpy for monomer
+            fillMatrix2(a.maxLoop);         // calc-s thermod values into dynamic progr table (monomer). MAJOR CALCULATIONS --> maxTM2(), CBI(), calc_bulge_internal2 !!
+            calc_terminal_bp(a.temp);
+            double mh = HEND5(len1);
+            double ms = SEND5(len1);
+            o.align_end_1 = (int) mh;
+            o.align_end_2 = (int) ms;
+            auto bp = std::vector<int> (len1, 0);
+            if(isFinite(mh))                          // ********** RESULTS HERE   !!!!!!!!!!
+            {
+                tracebacku(bp, a.maxLoop);    // traceback for hairpins in unimolecular structure. calls  /* traceback for unimolecular structure */
+                o.sec_struct=drawHairpin(bp, mh, ms, mode,a->temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
+                /* prints ascii output of hairpin structure */
+            }
+            else if((mode != thal_args::mode::FAST   ) &&
+                    (mode != thal_args::mode::DEBUG_F) &&
+                    (mode != thal_args::mode::STRUCT)    )
+            {
+                fputs("No secondary structure could be calculated\n",stderr);
+            }
+
+            if(o.temp==-_INFINITY && (!strcmp(o.msg, ""))) o.temp=0.0;
+            return;
+        }
+        else          // if(a->type!=4) {                        /* Hybridization of two moleculs */
+        {
+            len3 = len2;                 // safe_realloc(ptr, m * n * sizeof(double)
+            enthalpyDPT.clear() ; enthalpyDPT.resize( len1 * len2 );  /* dyn. programming table for dS and dH */
+            entropyDPT .clear() ; entropyDPT .resize( len1 * len2 );  /* enthalpyDPT is 3D array represented as 1D array */
+
+            initMatrix();               ///< initiates thermodynamic parameter tables of entropy and enthalpy for dimer
+            fillMatrix(a.maxLoop );    ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
+            double SH[2];
+            /* calculate terminal basepairs */
+            double G1 = _INFINITY, bestG = _INFINITY;
+
+            if(a.type == thal_args::type::Any)
+                for (int i = 1; i <= len1; i++)
+                for (int j = 1; j <= len2; j++)
+                {
+                    RSH(i, j, SH);
+                    SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0 */
+                    SH[1] = SH[1]+SMALL_NON_ZERO;
+                    G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);
+                    if(G1<bestG)
+                    {
+                        bestG = G1;
+                        bestI = i;
+                        bestJ = j;
+                    }
+                }
+            std::vector<int> ps1(len1, 0), ps2(len2, 0);
+            if(a.type == thal_args::type::end1 || a.type == thal_args::type::end2)
+            {
+                /* THAL_END1 */
+                bestI = bestJ = 0;
+                bestI = len1;
+                int i = len1;
+                G1 = bestG = _INFINITY;
+                for (int j = 1; j <= len2; ++j)
+                {
+                    RSH(i, j, SH);
+                    SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0,
+                                             that compiler could understand that SH is changed in this cycle */
+                    SH[1] = SH[1]+SMALL_NON_ZERO;
+                    G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);
+                    if(G1<bestG)
+                    {
+                        bestG = G1;
+                        bestJ = j;
+                    }
+                }
+            }
+            if (!isFinite(bestG)) bestI = bestJ = 1;
+            double dH, dS;
+            RSH(bestI, bestJ, SH);
+            dH =  EnthalpyDPT(bestI, bestJ)+ SH[1] + dplx_init_H;
+            dS =  EntropyDPT (bestI, bestJ)+ SH[0] + dplx_init_S;
+
+            for (int i = 0; i < len1; ++i)      ps1[i] = 0;           /* tracebacking */
+            for (int j = 0; j < len2; ++j)      ps2[j] = 0;
+
+            if(isFinite(EnthalpyDPT(bestI, bestJ)))                         //  RESULTS HERE   !!!!!!!!!!
+            {
+                traceback(bestI, bestJ, RC, ps1, ps2, a.maxLoop, o);   /* traceback for dimers */
+                o.sec_struct=drawDimer(ps1, ps2, SHleft, dH, dS, mode, a.temp, o);
+                o.align_end_1=bestI;
+                o.align_end_2=bestJ;
+            } else  {
+                o.temp = 0.0;
+                /* fputs("No secondary structure could be calculated\n",stderr); */
+            }
+            return;
+        }
+        return;
+    }
+
 };
 
 //     *******************    thal function  *****************************
@@ -2161,187 +2308,29 @@ void thal( const seq& oligo_f,
                                " for thermodynamic alignment");
 
     if (len_f > THAL_MAX_SEQ )
-        throw std::length_error ("Target sequence (1) length > maximum allowed (" + std::itos( MAX_LEN)  ") "
-                                 "in thermodynamic alignment"  );
+        throw std::length_error ("Target sequence (1) length > maximum allowed (" + std::itos( MAX_LEN) +
+                                                                 ") in thermodynamic alignment"  );
 
     if (len_r > THAL_MAX_SEQ )
-        throw std::length_error ("Target sequence (2) length > maximum allowed (" + std::itos( MAX_LEN)  ") "
+        throw std::length_error ("Target sequence (2) length > maximum allowed (" + std::itos( MAX_LEN) + ") "
                                  "in thermodynamic alignment"  );
 
-    if (!a) throw std::runtime_error("Null 'in' argument pointer passed to thermodynamic alignment");
-
-    if (  a->type != thal_args::type::Any      // 1
-       && a->type != thal_args::type::end1     // 2
-       && a->type != thal_args::type::end2     // 3
-       && a->type != thal_args::type::Hairpin) // 4
+    if (  a.type != thal_args::type::Any      // 1
+       && a.type != thal_args::type::end1     // 2
+       && a.type != thal_args::type::end2     // 3
+       && a.type != thal_args::type::Hairpin) // 4
           throw std::runtime_error("Illegal task type passed to thermodynamic alignment");
 
-   o->align_end_1 = -1;
-   o->align_end_2 = -1;
+    if (!a.tp.m_thal_p)
+        throw std::runtime_error("Not initialized NN parameters for the thermodynamic alignment");
+
+   o.align_end_1 = -1;
+   o.align_end_2 = -1;
 
    if (!oligo_f ) throw std::invalid_argument("Empty first sequence passed to thermodynamic alignment");
    if (!oligo_r ) throw std::invalid_argument("Empty second sequence passed to thermodynamic alignment");
 
-   oligo1 = oligo_f;
-   oligo2 = oligo_r;
-   if(a->type!=thal_args::type::end2) oligo1.swap(oligo2);     // 3
-   len1 = oligo1.length();
-   len2 = oligo2.length();
-   for(int i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
-   for(int i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
-
-    double* SH;
-    int *bp;
-    double mh, ms;
-    double G1, bestG;
-
-
-
-    /*** INIT values for unimolecular and bimolecular structures ***/
-
-   if (a->type==thal_args::type::Hairpin)                         /* unimolecular folding     4 */
-   {
-      len3 = len2 -1;
-      dplx_init_H = 0.0;                /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
-      dplx_init_S = -0.00000000001;     /* initiation entropy; for duplex -5.7, for unimoleculat structure 0 */
-      RC=0;
-      send5.resize(len1);   hend5.resize(len1);
-   }
-   else //if(a->type!=4)                           /* all the others ----> hybridization of two oligos */
-   {                                               /* using the second reversed   */
-      reverse(oligo2);                  /* REVERSE oligo2, so it goes to dpt 3'->5' direction */
-      dplx_init_H = 200;
-      dplx_init_S = -5.7;
-      if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2))
-      {
-         RC = R  * log(a->dna_conc/1000000000.0);      // both symmetric
-      }
-      else
-      {
-         RC = R  * log(a->dna_conc/4000000000.0);
-      }
-   }
-   /*** Calc part of the salt correction ***/
-   saltCorrection=saltCorrectS(a->mv,a->dv,a->dntp); /* salt correction for entropy, must be multiplied with N, which is
-                                              the total number of phosphates in the duplex divided by 2; 8bp dplx N=7 */
-
-   numSeq1 = '\4' + nt2code(oligo1) + '\4'    /* mark first and last as N-s */
-   numSeq2 = '\4' + nt2code(oligo2) + '\4'    /* mark first and last as N-s */
-
-   if (a->type == thal_args::type::Hairpin)   /* 4 calculate structure of monomer */
-   {
-      enthalpyDPT.clear(); enthalpyDPT.resize( len1 * len2 );   // safe_realloc(ptr, m * n * sizeof(double)
-      entropyDPT.clear() ; entropyDPT.resize ( len1 * len2 );
-      initMatrix2();                   // initiates thermodynamic parameter tables of entropy and enthalpy for monomer
-      fillMatrix2(a->maxLoop);         // calc-s thermod values into dynamic progr table (monomer). MAJOR CALCULATIONS --> maxTM2(), CBI(), calc_bulge_internal2 !!
-      calc_terminal_bp(a->temp);
-      mh = HEND5(len1);
-      ms = SEND5(len1);
-      o->align_end_1 = (int) mh;
-      o->align_end_2 = (int) ms;
-      auto bp = std::vector<int> (len1, 0);
-      if(isFinite(mh))                          //  RESULTS HERE   !!!!!!!!!!
-      {
-         tracebacku(bp, a->maxLoop, o);    // traceback for hairpins in unimolecular structure. calls  /* traceback for unimolecular structure */
-         o->sec_struct=drawHairpin(bp, mh, ms, mode,a->temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
-          /* prints ascii output of hairpin structure */
-      }
-      else if((mode != thal_args::mode::FAST   ) &&
-              (mode != thal_args::mode::DEBUG_F) &&
-              (mode != thal_args::mode::STRUCT)    )
-      {
-         fputs("No secondary structure could be calculated\n",stderr);
-      }
-
-      if(o->temp==-_INFINITY && (!strcmp(o->msg, ""))) o->temp=0.0;
-
-      enthalpyDPT={}; // .clear(); // shrink_to_fit   ??   free all memmory ?!
-      entropyDPT ={}; // .clear(); // shrink_to_fit   ??
-      numSeq1    ={}; // .clear(); // shrink_to_fit   ??
-      numSeq2    ={}; // .clear(); // shrink_to_fit   ??
-      send5      ={}; // .clear(); // shrink_to_fit   ??
-      hend5      ={}; // .clear(); // shrink_to_fit   ??
-      oligo1     ={}; // .clear(); // shrink_to_fit   ??
-      oligo2     ={}; // .clear(); // shrink_to_fit   ??
-
-      return;
-
-   }
-   else          // if(a->type!=4) {                             /* Hybridization of two moleculs */
-   {
-      len3 = len2;                 // safe_realloc(ptr, m * n * sizeof(double)
-      enthalpyDPT.clear() ; enthalpyDPT.resize( len1 * len2 );  /* dyn. programming table for dS and dH */
-      entropyDPT .clear() ; entropyDPT .resize( len1 * len2 );  /* enthalpyDPT is 3D array represented as 1D array */
-
-      initMatrix();               ///< initiates thermodynamic parameter tables of entropy and enthalpy for dimer
-      fillMatrix(a->maxLoop );    ///< initiates thermodynamic parameter tables of entropy and enthalpy for monomer
-      double SH[2];
-      /* calculate terminal basepairs */
-      bestI = bestJ = 0;
-      G1 = bestG = _INFINITY;
-      if(a->type==1)
-         for (i = 1; i <= len1; i++) {
-            for (j = 1; j <= len2; j++) {
-               RSH(i, j, SH);
-               SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0 */
-               SH[1] = SH[1]+SMALL_NON_ZERO;
-               G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);
-               if(G1<bestG){
-                  bestG = G1;
-                  bestI = i;
-                  bestJ = j;
-               }
-            }
-         }
-      std::vector<int> ps1(len1, 0), ps2(len2, 0);
-      if(a->type == thal_args::type::end1 || a->type == thal_args::type::end2)        {
-         /* THAL_END1 */
-         bestI = bestJ = 0;
-         bestI = len1;
-         i = len1;
-         G1 = bestG = _INFINITY;
-         for (j = 1; j <= len2; ++j) {
-            RSH(i, j, SH);
-            SH[0] = SH[0]+SMALL_NON_ZERO; /* this adding is done for compiler, optimization -O2 vs -O0,
-                                             that compiler could understand that SH is changed in this cycle */
-            SH[1] = SH[1]+SMALL_NON_ZERO;
-            G1 = (EnthalpyDPT(i, j)+ SH[1] + dplx_init_H) - TEMP_KELVIN*(EntropyDPT(i, j) + SH[0] + dplx_init_S);
-            if(G1<bestG){
-               bestG = G1;
-               bestJ = j;
-            }
-         }
-      }
-      if (!isFinite(bestG)) bestI = bestJ = 1;
-      double dH, dS;
-      RSH(bestI, bestJ, SH);
-      dH =  EnthalpyDPT(bestI, bestJ)+ SH[1] + dplx_init_H;
-      dS = (EntropyDPT (bestI, bestJ)+ SH[0] + dplx_init_S);
-
-      for (i = 0; i < len1; ++i)      ps1[i] = 0;           /* tracebacking */
-      for (j = 0; j < len2; ++j)      ps2[j] = 0;
-
-      if(isFinite(EnthalpyDPT(bestI, bestJ)))                         //  RESULTS HERE   !!!!!!!!!!
-      {
-         traceback(bestI, bestJ, RC, ps1, ps2, a->maxLoop, o);   /* traceback for dimers */
-         o->sec_struct=drawDimer(ps1, ps2, SHleft, dH, dS, mode, a->temp, o);
-         o->align_end_1=bestI;
-         o->align_end_2=bestJ;
-      } else  {
-         o->temp = 0.0;
-         /* fputs("No secondary structure could be calculated\n",stderr); */
-      }
-      free(ps1);
-      free(ps2);
-      free(SH);
-      free(enthalpyDPT);
-      free(entropyDPT);
-      numSeq1.clear();
-      numSeq2.clear();
-      oligo1.clear();
-      return;
-   }
-   return;
+   ThAl( oligo_f, oligo_r, a, modem, o);
 }
 /*** END thal() ***/
 

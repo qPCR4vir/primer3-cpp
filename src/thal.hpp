@@ -79,10 +79,9 @@ extern const int MIN_LOOP;
 constexpr int    MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
 constexpr double TEMP_KELVIN = 310.15;
 
-/// handle the NN parameters for the thermodinamic-alignment
-class thal_parameters
+/// handle the NN parameters for the thermodynamic alignment
+struct thal_parameters
  {
-   public:
     thal_parameters(); ///< calls set_defaults( );
     explicit thal_parameters(const std::filesystem::path& dirname );  ///< calls load( );
     ~thal_parameters();
@@ -93,9 +92,8 @@ class thal_parameters
     /// load and parse parameters from a directory
     int load(const std::filesystem::path& dirname );
 
-   private:
-     class impl;
-     std::unique_ptr<impl> m_thal_p;
+    class impl;
+    std::unique_ptr<impl> m_thal_p;
 } ;
 
 /// Structure for passing arguments to THermodynamic ALignment calculation
