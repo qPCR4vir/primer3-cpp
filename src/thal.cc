@@ -1786,124 +1786,129 @@ class ThAl
                           double t37,
                           thal_results *o)
     {
-        int ret_space = 0;
-        int ret_nr, ret_pr_once;
-        std::string ret_str[4];
-        int i, j, k, numSS1, numSS2, N;
-        double G, t;
-        t = G = 0;
-        if (!isFinite(temp)){
-            if((mode != THL_FAST) && (mode != THL_DEBUG_F) && (mode != THL_STRUCT)) {
+        int ret_pr_once;
+        char ret_para[400];                // ??
+        int k, numSS1, numSS2, N;
+
+        if (!isFinite(temp))
+        {
+            if((mode != CProgParam_ThAl::mode::FAST   ) &&
+               (mode != CProgParam_ThAl::mode::DEBUG_F) &&
+               (mode != CProgParam_ThAl::mode::STRUCT )     )
+            {
                 printf("No predicted secondary structures for given sequences\n");
             }
             o->temp = 0.0; /* lets use generalization here; this should rather be very negative value */
             strcpy(o->msg, "No predicted sec struc for given seq");
             return NULL;
-        } else {
-            N=0;
-            for(i=0;i<len1;i++){
-                if(ps1[i]>0) ++N;
-            }
-            for(i=0;i<len2;i++) {
-                if(ps2[i]>0) ++N;
-            }
-            N = (N/2) -1;
-            t = ((H) / (S + (N * saltCorrection) + RC)) - ABSOLUTE_ZERO;
-            if((mode != THL_FAST) && (mode != THL_DEBUG_F)) {
-                G = (H) - (t37 * (S + (N * saltCorrection)));
-                S = S + (N * saltCorrection);
-                o->temp = (double) t;
-                /* maybe user does not need as precise as that */
-                /* printf("Thermodynamical values:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\tN = %d, SaltC=%f, RC=%f\n",
-                       len1, (double) S, (double) H, (double) G, (double) t, (int) N, saltCorrection, RC); */
-                if (mode != THL_STRUCT) {
-                    printf("Calculated thermodynamical parameters for dimer:\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
-                           (double) S, (double) H, (double) G, (double) t);
-                } else {
-                    sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
-                            (double) t, (double) G, (double) H, (double) S);
-                }
-            } else {
-                o->temp = (double) t;
-                return NULL;
-            }
         }
 
+        int N=0;
+        for(int i=0; i<len1; i++){   if(ps1[i]>0) ++N;        }
+        for(int i=0; i<len2; i++){   if(ps2[i]>0) ++N;        }
+        N = (N/2) -1;
+        double t = ((H) / (S + (N * saltCorrection) + RC)) - ABSOLUTE_ZERO;
+
+        if((mode != CProgParam_ThAl::mode::FAST   ) &&
+           (mode != CProgParam_ThAl::mode::DEBUG_F)   )
+        {
+            double G = (H) - (t37 * (S + (N * saltCorrection)));
+            S = S + (N * saltCorrection);
+            o->temp = (double) t;
+            /* maybe user does not need as precise as that */
+            /* printf("Thermodynamical values:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\tN = %d, SaltC=%f, RC=%f\n",
+                   len1, (double) S, (double) H, (double) G, (double) t, (int) N, saltCorrection, RC); */
+
+            if (mode != CProgParam_ThAl::mode::STRUCT)
+            {
+                printf("Calculated thermodynamical parameters for dimer:\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
+                                                                (double) S, (double) H, (double) G, (double) t);
+            } else
+            {
+                sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
+                          (double) t, (double) G, (double) H, (double) S);
+            }
+        } else
+        {
+            o->temp = (double) t;
+            return NULL;
+        }
+
+
         std::string duplex[4];
-        for (auto& dpl: duplex) dpl.reserve(len1 + len2 + 1);
+        for (auto& dpl: duplex) dpl.reserve(len1 + len2 + 1);   // not just max(len1, len2)  ???
 
-        i = 0;
-        numSS1 = 0;
-        while (ps1[i++] == 0) ++numSS1;
-        j = 0;
-        numSS2 = 0;
-        while (ps2[j++] == 0) ++numSS2;
+        int i = 0,  numSS1 = 0;
+        while (ps1[i++] == 0) ++numSS1;     // count gaps in single strand 1 ?
 
-        if (numSS1 >= numSS2){
-            for (i = 0; i < numSS1; ++i) {
-                strcatc(duplex[0], oligo1[i]);
-                strcatc(duplex[1], ' ');
-                strcatc(duplex[2], ' ');
-            }
-            for (j = 0; j < numSS1 - numSS2; ++j) strcatc(duplex[3], ' ');
-            for (j = 0; j < numSS2; ++j) strcatc(duplex[3], oligo2[j]);
-        } else {
-            for (j = 0; j < numSS2; ++j) {
-                strcatc(duplex[3], oligo2[j]);
-                strcatc(duplex[1], ' ');
-                strcatc(duplex[2], ' ');
-            }
-            for (i = 0; i < numSS2 - numSS1; ++i)
-                strcatc(duplex[0], ' ');
+        int j = 0,  numSS2 = 0;
+        while (ps2[j++] == 0) ++numSS2;     // count gaps in single strand 2 ?
+
+        if (numSS1 >= numSS2)
+        {
             for (i = 0; i < numSS1; ++i)
-                strcatc(duplex[0], oligo1[i]);
+            {
+                duplex[0] += oligo1[i];
+                duplex[1] += ' ';
+                duplex[2] += ' ';
+            }
+            for (j = 0; j < numSS1 - numSS2; ++j) duplex[3] += ' ';
+            for (j = 0; j < numSS2         ; ++j) duplex[3] += oligo2[j];
+        } else
+        {
+            for (i = 0; i < numSS2 - numSS1; ++i)       duplex[0] += ' ';
+            for (i = 0; i < numSS1         ; ++i)       duplex[0] += oligo1[i];
+            for (j = 0; j < numSS2; ++j)
+            {
+                duplex[1] += ' ';
+                duplex[2] += ' ';
+                duplex[3] += oligo2[j];
+            }
         }
         i = numSS1 + 1;
         j = numSS2 + 1;
 
-        while (i <= len1) {
-            while (i <= len1 && ps1[i - 1] != 0 && j <= len2 && ps2[j - 1] != 0) {
-                strcatc(duplex[0], ' ');
-                strcatc(duplex[1], oligo1[i - 1]);
-                strcatc(duplex[2], oligo2[j - 1]);
-                strcatc(duplex[3], ' ');
+        while (i <= len1)
+        {
+            while (i <= len1 && ps1[i - 1] != 0 &&
+                   j <= len2 && ps2[j - 1] != 0    )
+            {
+                duplex[0] += ' ';
+                duplex[1] += oligo1[i - 1];
+                duplex[2] += oligo2[j - 1];
+                duplex[3] += ' ';
                 ++i;
                 ++j;
             }
             numSS1 = 0;
-            while (i <= len1 && ps1[i - 1] == 0) {
-                strcatc(duplex[0], oligo1[i - 1]);
-                strcatc(duplex[1], ' ');
+            while (i <= len1 && ps1[i - 1] == 0)
+            {
+                duplex[0] += oligo1[i - 1];
+                duplex[1] += ' ';
                 ++numSS1;
                 ++i;
             }
             numSS2 = 0;
-            while (j <= len2 && ps2[j - 1] == 0) {
-                strcatc(duplex[2], ' ');
-                strcatc(duplex[3], oligo2[j - 1]);
+            while (j <= len2 && ps2[j - 1] == 0)
+            {
+                duplex[2] += ' ';
+                duplex[3] += oligo2[j - 1];
                 ++numSS2;
                 ++j;
             }
-            if (numSS1 < numSS2)
-                for (k = 0; k < numSS2 - numSS1; ++k) {
-                    strcatc(duplex[0], '-');
-                    strcatc(duplex[1], ' ');
-                }
+            if      (numSS1 < numSS2)
+                for (k = 0; k < numSS2 - numSS1; ++k)     {  duplex[0] += '-';
+                                                             duplex[1] += ' ';  }
             else if (numSS1 > numSS2)
-                for (k = 0; k < numSS1 - numSS2; ++k) {
-                    strcatc(duplex[2], ' ');
-                    strcatc(duplex[3], '-');
-                }
+                for (k = 0; k < numSS1 - numSS2; ++k)     {  duplex[2] += ' ';
+                                                             duplex[3] += '-';  }
         }
-        if ((mode == THL_GENERAL) || (mode == THL_DEBUG)) {
-            printf("SEQ\t");
-            printf("%s\n", duplex[0]);
-            printf("SEQ\t");
-            printf("%s\n", duplex[1]);
-            printf("STR\t");
-            printf("%s\n", duplex[2]);
-            printf("STR\t");
-            printf("%s\n", duplex[3]);
+        if ((mode == CProgParam_ThAl::mode::GENERAL) || (mode == CProgParam_ThAl::mode::DEBUG))
+        {
+            printf("SEQ\t");             printf("%s\n", duplex[0].c_str());
+            printf("SEQ\t");             printf("%s\n", duplex[1].c_str());
+            printf("STR\t");             printf("%s\n", duplex[2].c_str());
+            printf("STR\t");             printf("%s\n", duplex[3].c_str());
         }
         if (mode == THL_STRUCT) {
             ret_str[3] = NULL;
@@ -1924,12 +1929,14 @@ class ThAl
                 }
                 ret_nr++;
             }
-            if (strlen(duplex[1]) > strlen(duplex[0])) {
+            if (strlen(duplex[1]) > strlen(duplex[0]))  // truncate ret_str[0] to the length of duplex[0] (+ 3)
+            {
                 ret_str[0][strlen(duplex[1]) + 3] = '\0';
             }
             /* Clean Ends */
             ret_nr = strlen(ret_str[0]) - 1;
-            while (ret_nr > 0 && (ret_str[0][ret_nr] == ' ' || ret_str[0][ret_nr] == '-')) {
+            while (ret_nr > 0 && (ret_str[0][ret_nr] == ' ' || ret_str[0][ret_nr] == '-'))
+            {
                 ret_str[0][ret_nr--] = '\0';
             }
             /* Write the 5' */
@@ -2018,17 +2025,7 @@ class ThAl
 */
             ret_ptr = (char *) safe_malloc(strlen(ret_str[3]) + 1, o);
             strcpy(ret_ptr, ret_str[3]);
-            if (ret_str[3]) {
-                free(ret_str[3]);
-            }
-            free(ret_str[0]);
-            free(ret_str[1]);
-            free(ret_str[2]);
         }
-        free(duplex[0]);
-        free(duplex[1]);
-        free(duplex[2]);
-        free(duplex[3]);
 
         return ret_ptr;
     }
@@ -2188,55 +2185,6 @@ class ThAl
 public:
 
 };
-
-
-static void
-save_append_string(char** ret,         ///< string to which str will be added
-                   int *space,         ///< reserved among of memmory before and after
-                   thal_results *o,
-                   const char *str    ///< string to be added to ret
-                   )
-{
-  if (str == NULL) {     return;   }
-  if (*ret == NULL)
-  {
-    *ret = (char *) safe_malloc(sizeof(char)*500, o);
-    *ret[0] = '\0';
-    *space = 500;
-  }
-    int xlen = strlen(*ret);
-    int slen = strlen(str);
-
-  if (xlen + slen + 1 > *space)
-  {
-    *space += 4 * (slen + 1);
-    *ret = (char *) safe_realloc(*ret, *space, o);
-  }
-  strcpy(*ret + xlen, str);
-  return;
-}
-/// calls save_append_string
-static void
-save_append_char(char** ret,         ///< string to which str will be added
-                 int *space,         ///< reserved among of memmory before and after
-                 thal_results *o,
-                 const char str      ///< char to be added to ret
-                 )
-{
-  char fix[3];
-  fix[0] = str;
-  fix[1] = '\0';
-  save_append_string(ret, space, o, fix);
-}
-
-
-static void 
-strcatc(char* str, char c)
-{
-   str[strlen(str) + 1] = 0;
-   str[strlen(str)] = c;
-}
-
 
 //     *******************    thal function  *****************************
 /* central method: execute all sub-methods for calculating secondary
