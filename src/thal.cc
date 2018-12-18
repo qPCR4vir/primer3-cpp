@@ -51,6 +51,7 @@
 #include <map>
 #include <vector>
 #include <string_view>
+#include <stack>
 
 #include "primer3_config/dangle.dh.hpp"
 #include "primer3_config/dangle.ds.hpp"
@@ -591,6 +592,30 @@ class ThAl
         else if(d > e    ) return 4;
         else return 5;
     }
+    /// Is sequence symmetrical? Used only once only in thal. TODO change to use code
+    static bool symmetry_thermo(const seq& sq)
+    {
+        int end= sq.length();
+        if(end%2)  return false;   // symmetrical only if 2 | L
+        end--;
+        for(int i=0; i<end; i++, end-- )
+        {
+            char s=nt2code(sq[i]  );                  //  to avoid this
+            char e=nt2code(sq[end]);
+            if (! bpIndx(s,e) )  return false;
+        }
+        return true;
+    }
+
+    static int equal(double a, double b)
+    {
+#ifdef INTEGER
+        return a == b;
+#endif
+        if (!isfinite(a) || !isfinite(b))               return 0;
+        return fabs(a - b) < 1e-5;              //     if (a == 0 && b == 0)         return 1;
+    }
+
 
     static constexpr double R    = 1.9872;          /* cal/Kmol */
     static constexpr double ILAS = (-300 / 310.15); /* Internal Loop Entropy ASymmetry correction -0.3kcal/mol*/
@@ -615,24 +640,6 @@ class ThAl
     seq            oligo1,  oligo2;   /* inserted oligo sequenced */
     seq            numSeq1, numSeq2;  /* same as oligo1 and oligo2 but converted to numbers */
     static int     len1, len2, len3;   /* length of sequense 1 and 2 */
-
-    struct tracer /* structure only for tracebacku - unimolecular str */
-    {
-        int i;
-        int j;
-        int mtrx; /* [0 1] EntropyDPT/EnthalpyDPT*/
-        struct tracer* next;
-    };
-    static void push(struct tracer** stack, int i, int j, int mtrx)
-    {
-        struct tracer* new_top;
-        new_top = new tracer;
-        new_top->i = i;
-        new_top->j = j;
-        new_top->mtrx = mtrx;
-        new_top->next = *stack;
-        *stack = new_top;
-    }
 
     std::vector<double> enthalpyDPT, entropyDPT,    /* DyProg matrix for values of enthalpy and entropy */
                         send5,       hend5;         /* calc 5'  */
@@ -770,7 +777,7 @@ class ThAl
         }
     }
 
-    void maxTM(int i, int j) /* finds max Tm while filling the dyn progr table using stacking S and stacking H (dimer) */
+    void maxTM(int i, int j) ///<   finds max Tm while filling the dyn progr table using stacking S and stacking H (dimer)
     {
         double T0 = -_INFINITY,           T1 = -_INFINITY,
                S0 = EntropyDPT (i, j),    S1,
@@ -801,7 +808,7 @@ class ThAl
         else  if(T0 >= T1)      {   EntropyDPT(i, j) = S0;     EnthalpyDPT(i, j) = H0;     }
     }
 
-    void maxTM2(int i, int j) /* finds max Tm while filling the dyn progr table using stacking S and stacking H (monomer) */
+    void maxTM2(int i, int j)  ///<  finds max Tm while filling the dyn progr table using stacking S and stacking H (monomer)
     {
         double T0 = -_INFINITY,           T1 = -_INFINITY,
                S0 = EntropyDPT (i, j),    S1,
@@ -826,7 +833,7 @@ class ThAl
         else        {    EntropyDPT (i, j) = S0;    EnthalpyDPT(i, j) = H0;    }
     }
 
-    /* calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end) */
+    /// calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end)
     void LSH(int i, int j, double EntropyEnthalpy[2])
     {
         double S1 = -1.0,    H1 = -_INFINITY,    T1 = -_INFINITY,    G1;
@@ -908,7 +915,7 @@ class ThAl
         return;
     }
 
-    /* calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end) */
+    /// calculate terminal entropy S and terminal enthalpy H starting reading from 5'end (Left hand/3' end - Right end)
     void RSH(int i, int j, double EntropyEnthalpy[2])
     {
         double S1 = -1.0,    H1 = -_INFINITY,    T1 = -_INFINITY,    G1;
@@ -988,7 +995,7 @@ class ThAl
         return;
     }
 
-    double Ss(int i, int j, int k)                        /* returns stack entropy */
+    double Ss(int i, int j, int k)                        ///<   returns stack entropy
     {
         if(k==2)
         {
@@ -1005,7 +1012,7 @@ class ThAl
         }
     }
 
-    double Hs(int i, int j, int k)                        /* returns stack enthalpy */
+    double Hs(int i, int j, int k)                         ///<  returns stack enthalpy
     {
         if(k==2)
         {
@@ -1028,7 +1035,7 @@ class ThAl
         }
     }
 
-    /* carries out Bulge and Internal loop and stack calculations to hairpin */
+    /// carries out Bulge and Internal loop and stack calculations to hairpin
     void CBI(int i, int j, double SH[2], int traceback, int maxLoop)
     {
         int  jj;
@@ -1054,8 +1061,7 @@ class ThAl
 
     using seq_vw  = std::basic_string_view<unsigned char> ;
 
-    /* finds monomer structure that has maximum Tm */
-    void calc_hairpin(int i, int j, double S_H[2], int traceback)
+    void calc_hairpin(int i, int j, double S_H[2], int traceback) ///<   finds monomer structure that has maximum Tm
     {
         int loopSize = j - i - 1;
         double G1    = -_INFINITY,       G2= -_INFINITY;
@@ -1118,7 +1124,7 @@ class ThAl
         if(G2 < G1 && traceback == 0) {  S_H[0] = EntropyDPT(i, j);   S_H[1] = EnthalpyDPT(i, j); }
     }
 
-    /* calculates bulges and internal loops for dimer structures */
+    /// calculates bulges and internal loops for dimer structures
     void calc_bulge_internal(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
     {
         int loopSize1 = ii - i - 1, loopSize2 = jj - j - 1, loopSize = loopSize1 + loopSize2-1;
@@ -1244,7 +1250,7 @@ class ThAl
         return;
     }
 
-    /* calculates bulges and internal loops for monomer structures */
+    /// calculates bulges and internal loops for monomer structures
     void calc_bulge_internal2(int i, int j, int ii, int jj, double EntropyEnthalpy[2], int traceback, int maxLoop)
     {
         int loopSize1 = ii - i - 1, loopSize2 = jj - j - 1, loopSize = loopSize1 + loopSize2-1;
@@ -1366,8 +1372,7 @@ class ThAl
         return;
     }
 
-    /* terminal bp for monomer structure */
-    void calc_terminal_bp(double temp) /* compute exterior loop */ /* terminal bp for monomer structure */
+    void calc_terminal_bp(double temp) ///<  compute exterior loop, terminal bp for monomer structure
     {
         SEND5(0) = SEND5(1) = -1.0;
         HEND5(0) = HEND5(1) = _INFINITY;
@@ -1416,7 +1421,7 @@ class ThAl
         }
     }
 
-    /* executed in calc_terminal_bp; to find structure that corresponds to max Tm for terminal bp */
+    /// executed in calc_terminal_bp; to find structure that corresponds to max Tm for terminal bp
     double END5_1(int i, int hs)
     {
         double max_tm = -_INFINITY;                          /* energy min */
@@ -1550,72 +1555,47 @@ class ThAl
         return S_max;
     }
 
-    double Sd5(int i, int j)        /* returns thermodynamic value (S) for 5' dangling end */
+    double Sd5(int i, int j)         ///<   returns thermodynamic value (S) for 5' dangling end
     {
         return tp.dangleEntropies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
     }
 
-    double  Hd5(int i, int j)       /* returns thermodynamic value (H) for 5' dangling end */
+    double  Hd5(int i, int j)        ///<   returns thermodynamic value (H) for 5' dangling end
     {
         return tp.dangleEnthalpies5[numSeq1[i]][numSeq1[j]][numSeq1[j - 1]];
     }
 
-    double Sd3(int i, int j)        /* returns thermodynamic value (S) for 3' dangling end */
+    double Sd3(int i, int j)         ///<   returns thermodynamic value (S) for 3' dangling end
     {
         return tp.dangleEntropies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
     }
 
-    double  Hd3(int i, int j)       /* returns thermodynamic value (H) for 3' dangling end */
+    double  Hd3(int i, int j)        ///<   returns thermodynamic value (H) for 3' dangling end
     {
         return tp.dangleEnthalpies3[numSeq1[i]][numSeq1[i+1]][numSeq1[j]];
     }
 
-    double Ststack(int i, int j)    /* returns entropy value for terminal stack */
+    double Ststack(int i, int j)     ///<   returns entropy value for terminal stack
     {
         return tp.tstack2Entropies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
     }
 
-    double Htstack(int i, int j)    /* returns enthalpy value for terminal stack */
+    double Htstack(int i, int j)     ///<   returns enthalpy value for terminal stack
     { /* e.g AG_TC 210 */
         return tp.tstack2Enthalpies[numSeq1[i]][numSeq1[i+1]][numSeq1[j]][numSeq1[j-1]];
     }
 
-    /* Is sequence symmetrical */
-    /* Return if string is symmetrical. Used only once only in thal. TODO change to use code */
-    static bool symmetry_thermo(const seq& sq)
+    struct harpin{int i,j,mtrx;};
+    void tracebacku(std::vector<int>& bp, int maxLoop,thal_results* o) ///< traceback for unimolecular hairpins structure
     {
-        int end= sq.length();
-        if(end%2)  return false;   // symmetrical only if 2 | L
-        end--;
-        for(int i=0; i<end; i++, end-- )
-        {
-            char s=nt2code(sq[i]  );                  //  to avoid this
-            char e=nt2code(sq[end]);
-            if (! bpIndx(s,e) )  return false;
-        }
-        return true;
-    }
-
-    static int equal(double a, double b)
-    {
-#ifdef INTEGER
-        return a == b;
-#endif
-        if (!isfinite(a) || !isfinite(b))               return 0;
-        return fabs(a - b) < 1e-5;              //     if (a == 0 && b == 0)         return 1;
-    }
-
-    void tracebacku(std::vector<int>& bp, int maxLoop,thal_results* o) /* traceback for unimolecular structure */ /* traceback for hairpins */
-    {
-        struct tracer *top, *stack = NULL;
+        std::stack<harpin> harpins;                  // struct tracer *top, *stack = NULL;
+        harpins.emplace(len1,0,1);                   // push(&stack,len1, 0, 1);
         double SH1[2], SH2[2], EntropyEnthalpy[2];
-        push(&stack,len1, 0, 1);
-        while(stack) {
-            top = stack;
-            stack = stack->next;
-            int i = top->i;
-            int j = top->j;
-            if(top->mtrx==1)
+        while(harpins) {
+            harpin top = harpins.top();    harpins.pop();
+            int i = top.i;
+            int j = top.j;
+            if(top.mtrx==1)
             {
                 while (equal(SEND5(i), SEND5(i - 1)) && equal(HEND5(i), HEND5(i - 1))) /* if previous structure is the same as this one */
                     --i;
@@ -1626,14 +1606,14 @@ class ThAl
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT (k + 1, i)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i)))
                         {
-                            push(&stack, k + 1, i, 0 );
+                            harpins.emplace(k + 1, i, 0 );
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT (k + 1, i)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i)))
                         {
-                            push(&stack, k + 1, i, 0 );
-                            push(&stack, k    , 0, 1 );
+                            harpins.emplace(k + 1, i, 0 );
+                            harpins.emplace(k    , 0, 1 );
                             break;
                         }
                 }
@@ -1644,14 +1624,14 @@ class ThAl
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT (k + 2, i)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i)))
                         {
-                            push(&stack, k + 2, i, 0 );
+                            harpins.emplace(k + 2, i, 0 );
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT (k + 2, i)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i)))
                         {
-                            push(&stack, k + 2, i, 0 );
-                            push(&stack, k    , 0, 1 );
+                            harpins.emplace(k + 2, i, 0 );
+                            harpins.emplace(k    , 0, 1 );
                             break;
                         }
                 }
@@ -1662,14 +1642,14 @@ class ThAl
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT (k + 1, i - 1)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1)))
                         {
-                            push(&stack, k + 1, i - 1, 0 );
+                            harpins.emplace(k + 1, i - 1, 0 );
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT (k + 1, i - 1)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1)))
                         {
-                            push(&stack, k + 1, i - 1, 0 ); /* matrix 0  */
-                            push(&stack, k    , 0    , 1 ); /* matrix 3 */
+                            harpins.emplace(k + 1, i - 1, 0 ); /* matrix 0  */
+                            harpins.emplace(k    , 0    , 1 ); /* matrix 3 */
                             break;
                         }
                 }
@@ -1680,19 +1660,19 @@ class ThAl
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT (k + 2, i - 1)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1)))
                         {
-                            push(&stack, k + 2, i - 1, 0 );
+                            harpins.emplace(k + 2, i - 1, 0 );
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT (k + 2, i - 1)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1)) )
                         {
-                            push(&stack, k + 2, i - 1, 0 );
-                            push(&stack, k    , 0    , 1 );
+                            harpins.emplace(k + 2, i - 1, 0 );
+                            harpins.emplace(k    , 0    , 1 );
                             break;
                         }
                 }
             }
-            else if(top->mtrx==0)
+            else if(top.mtrx==0)
             {
                 bp[i - 1] = j;
                 bp[j - 1] = i;
@@ -1705,7 +1685,7 @@ class ThAl
                 if (equal(EntropyDPT (i, j), Ss(i, j, 2) + EntropyDPT (i + 1, j - 1)) &&
                     equal(EnthalpyDPT(i, j), Hs(i, j, 2) + EnthalpyDPT(i + 1, j - 1)))
                 {
-                    push(&stack, i + 1, j - 1, 0 );
+                    harpins.emplace(i + 1, j - 1, 0 );
                 }
                 else if (equal(EntropyDPT(i, j), SH1[0]) && equal(EnthalpyDPT(i, j), SH1[1]));
                 else if (equal(EntropyDPT(i, j), SH2[0]) && equal(EnthalpyDPT(i, j), SH2[1]))
@@ -1720,7 +1700,7 @@ class ThAl
                             if (equal(EntropyDPT (i, j), EntropyEnthalpy[0] + EntropyDPT (ii, jj)) &&
                                 equal(EnthalpyDPT(i, j), EntropyEnthalpy[1] + EnthalpyDPT(ii, jj)))
                             {
-                                push(&stack, ii, jj, 0 );
+                                harpins.emplace(ii, jj, 0 );
                                 ++done;
                                 break;
                             }
@@ -1729,7 +1709,7 @@ class ThAl
                 {
                 }
             }
-            delete top;    // todo this delete all ??? !!!
+            //delete top;    // todo this delete all ??? !!!
         }
     }
 
