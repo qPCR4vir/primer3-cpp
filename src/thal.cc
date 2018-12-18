@@ -1787,6 +1787,7 @@ class ThAl
                           thal_results *o)
     {
         int ret_pr_once;
+        std::string ret;
         char ret_para[400];                // ??
         int k, numSS1, numSS2, N;
 
@@ -1903,6 +1904,7 @@ class ThAl
                 for (k = 0; k < numSS1 - numSS2; ++k)     {  duplex[2] += ' ';
                                                              duplex[3] += '-';  }
         }
+
         if ((mode == CProgParam_ThAl::mode::GENERAL) || (mode == CProgParam_ThAl::mode::DEBUG))
         {
             printf("SEQ\t");             printf("%s\n", duplex[0].c_str());
@@ -1910,119 +1912,78 @@ class ThAl
             printf("STR\t");             printf("%s\n", duplex[2].c_str());
             printf("STR\t");             printf("%s\n", duplex[3].c_str());
         }
+
         if (mode == CProgParam_ThAl::mode::STRUCT)
         {
-            std::string ret_str[4];                                //  not just max(len1, len2)  ???
+            std::string ret_str[3];                                //  not just max(len1, len2)  ???
             for (auto & rs: ret_str) rs.reserve(len1 + len2 + 10); // more than duplex , ret_str[3] = NULL;     ?????????????
 
-            ret_str[0] = "   " + duplex[0];     /* Join top primer */
-            int ret_nr = 0, len = duplex[0].length();
+            ret_str[0] = "   " + duplex[0];                        /* Join top primer */  // make room for duplex[1]
+            if (duplex[1].length() > duplex[0].length() )          // expected to be equal ? just in case ??!
+                ret_str[0].resize(duplex[1].length()+3, ' ');      // in original - posible junk here ??
+
+            int ret_nr = 3 ;
             for ( char c: duplex[1])    // if the nt is in the duplex[1] write it (rescue nt from duplex[1] into ret_str[0])
             {
-                if (len <= ret_nr) break;                         // truncate ret_str[0] to the length of duplex[0] (+ 3)
-                if (c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')      ret_str[0][ret_nr + 3] = c;
+                if (c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')      ret_str[0][ret_nr] = c;
                 ret_nr++;
             }
-            if (strlen(duplex[1]) > strlen(duplex[0]))  // truncate ret_str[0] to the length of duplex[0] (+ 3)
-            {
-                ret_str[0][strlen(duplex[1]) + 3] = '\0';
-            }
-            /* Clean Ends */
-            ret_nr = strlen(ret_str[0]) - 1;
-            while (ret_nr > 0 && (ret_str[0][ret_nr] == ' ' || ret_str[0][ret_nr] == '-'))
-            {
-                ret_str[0][ret_nr--] = '\0';
-            }
-            /* Write the 5' */
-            ret_nr = 3;
-            ret_pr_once = 1;
-            while (ret_str[0][ret_nr] != '\0' && ret_pr_once == 1) {
-                if (ret_str[0][ret_nr] == 'A' || ret_str[0][ret_nr] == 'T' ||
-                    ret_str[0][ret_nr] == 'C' || ret_str[0][ret_nr] == 'G' ||
-                    ret_str[0][ret_nr] == '-') {
+
+                                                     /* Clean Ends. ret_nr will be the position of the last non gap */
+            for (ret_nr = ret_str[0].length() - 1;
+                                        ret_nr > 0 && (ret_str[0][ret_nr] == ' ' || ret_str[0][ret_nr] == '-');
+                                                                                                         --ret_nr);
+            ret_str[0].resize(ret_nr+1);                                          //                              ^; <---
+
+                   /* Write the 5' just before the first nt or gap. ret_nr will be the position of the first non gap */
+            for (ret_nr = 3; ret_nr < ret_str[0].length() ;  ++ret_nr)
+                if (char c=ret_str[0][ret_nr]; c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')
+                {
                     ret_str[0][ret_nr - 3] = '5';
                     ret_str[0][ret_nr - 2] = '\'';
-                    ret_pr_once = 0;
+                    break;
                 }
+                                              /* Create the align tics. In  duplex[1] we have the nt that match */
+            ret_str[1]= "   ";                                          // 3 ' '. why 5 in ori???
+            for (char c : duplex[1])
+                ret_str[1] += (c == 'A' || c == 'T' || c == 'C' || c == 'G') ? '|' : ' ';
+
+                                                                    /* Clean Ends */
+            for (ret_nr = ret_str[1].length() - 1; ret_nr > 0 && (ret_str[1][ret_nr] == ' ');  --ret_nr);
+                                                                                 //                    ^; <---
+            ret_str[1].resize(ret_nr+1);
+
+            ret_str[2] = "   " + duplex[2];                   /* Join bottom primer */// make room for duplex[3]
+            if (duplex[3].length() > duplex[2].length() )          // expected to be equal ? just in case ??!
+                ret_str[2].resize(duplex[3].length()+3, ' ');      // in original - posible junk here ??
+
+            int ret_nr = 3 ;
+            for ( char c: duplex[3])    // if the nt is in the duplex[3] write it (rescue nt from duplex[3] into ret_str[2])
+            {
+                if (c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')      ret_str[3][ret_nr] = c;
                 ret_nr++;
             }
 
-            /* Create the align tics */
-            strcpy(ret_str[1], "     ");
-            for (i = 0 ; i < strlen(duplex[1]) ; i++) {
-                if (duplex[1][i] == 'A' || duplex[1][i] == 'T' ||
-                    duplex[1][i] == 'C' || duplex[1][i] == 'G' ) {
-                    ret_str[1][i + 3] = '|';
-                } else {
-                    ret_str[1][i + 3] = ' ';
-                }
-                ret_str[1][i + 4] = '\0';
-            }
-            /* Clean Ends */
-            ret_nr = strlen(ret_str[1]) - 1;
-            while (ret_nr > 0 && ret_str[1][ret_nr] == ' ') {
-                ret_str[1][ret_nr--] = '\0';
-            }
-            /* Join bottom primer */
-            strcpy(ret_str[2], "   ");
-            strcat(ret_str[2], duplex[2]);
-            ret_nr = 0;
-            while (duplex[3][ret_nr] != '\0') {
-                if (duplex[3][ret_nr] == 'A' || duplex[3][ret_nr] == 'T' ||
-                    duplex[3][ret_nr] == 'C' || duplex[3][ret_nr] == 'G' ||
-                    duplex[3][ret_nr] == '-') {
-                    ret_str[2][ret_nr + 3] = duplex[3][ret_nr];
-                }
-                ret_nr++;
-            }
-            if (strlen(duplex[3]) > strlen(duplex[2])) {
-                ret_str[2][strlen(duplex[3]) + 3] = '\0';
-            }
-            /* Clean Ends */
-            ret_nr = strlen(ret_str[2]) - 1;
-            while (ret_nr > 0 && (ret_str[2][ret_nr] == ' ' || ret_str[2][ret_nr] == '-')) {
-                ret_str[2][ret_nr--] = '\0';
-            }
-            /* Write the 5' */
-            ret_nr = 3;
-            ret_pr_once = 1;
-            while (ret_str[2][ret_nr] != '\0' && ret_pr_once == 1) {
-                if (ret_str[2][ret_nr] == 'A' || ret_str[2][ret_nr] == 'T' ||
-                    ret_str[2][ret_nr] == 'C' || ret_str[2][ret_nr] == 'G' ||
-                    ret_str[2][ret_nr] == '-') {
+            /* Clean Ends. ret_nr will be the position of the last non gap */
+            for (ret_nr = ret_str[2].length() - 1;
+                                 ret_nr > 0 && (ret_str[2][ret_nr] == ' ' || ret_str[2][ret_nr] == '-');
+                                                                                                         --ret_nr);
+            ret_str[2].resize(ret_nr+1);                                          //                              ^; <---
+
+            /* Write the 3' just before the first nt or gap. ret_nr will be the position of the first non gap */
+            for (ret_nr = 3; ret_nr < ret_str[2].length() ;  ++ret_nr)
+                if (char c=ret_str[2][ret_nr]; c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')
+                {
                     ret_str[2][ret_nr - 3] = '3';
                     ret_str[2][ret_nr - 2] = '\'';
-                    ret_pr_once = 0;
+                    break;
                 }
-                ret_nr++;
-            }
 
-            save_append_string(&ret_str[3], &ret_space, o, ret_para);
-            save_append_string(&ret_str[3], &ret_space, o, ret_str[0]);
-            save_append_string(&ret_str[3], &ret_space, o, " 3\'\\n");
-            save_append_string(&ret_str[3], &ret_space, o, ret_str[1]);
-            save_append_string(&ret_str[3], &ret_space, o, "\\n");
-            save_append_string(&ret_str[3], &ret_space, o, ret_str[2]);
-            save_append_string(&ret_str[3], &ret_space, o, " 5\'\\n");
-
-
-/*
-     save_append_string(&ret_str, &ret_space, o, "SEQ ");
-     save_append_string(&ret_str, &ret_space, o, duplex[0]);
-     save_append_string(&ret_str, &ret_space, o, "\\nSEQ ");
-     save_append_string(&ret_str, &ret_space, o, duplex[1]);
-     save_append_string(&ret_str, &ret_space, o, "\\nSTR ");
-     save_append_string(&ret_str, &ret_space, o, duplex[2]);
-     save_append_string(&ret_str, &ret_space, o, "\\nSTR ");
-     save_append_string(&ret_str, &ret_space, o, duplex[3]);
-     save_append_string(&ret_str, &ret_space, o, "\\n");
-*/
-            ret_ptr = (char *) safe_malloc(strlen(ret_str[3]) + 1, o);
-            strcpy(ret_ptr, ret_str[3]);
-        }
-
-        return ret_ptr;
+            ret = ret_para + ret_str[0] + " 3\'\\n" + ret_str[1] + "\\n" + ret_str[2] + " 5\'\\n";
+        }  // if (mode == CProgParam_ThAl::mode::STRUCT)
+        return ret;
     }
+
 /* prints ascii output of hairpin structure */
     std::string
     drawHairpin(std::vector<int>& bp, double mh, double ms,
