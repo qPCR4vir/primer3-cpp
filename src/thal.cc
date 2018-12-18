@@ -560,12 +560,12 @@ int thal_parameters::load (const std::filesystem::path& dirname )
 
 
 
-//                    ***************   CProgParam_ThAl   ***********************
+//                    ***************   thal_args   ***********************
 
 
 /* Set default args for oligo */
 void
-CProgParam_ThAl::set_oligo_defaults( )
+thal_args::set_oligo_defaults( )
 
 //                    ***************   ThAl impl  ***********************
 #ifndef MIN_HRPN_LOOP
@@ -1782,7 +1782,7 @@ class ThAl
                           double temp,
                           double H,
                           double S,
-                          const CProgParam_ThAl::mode mode,
+                          const thal_args::mode mode,
                           double t37,
                           thal_results *o)
     {
@@ -1793,9 +1793,9 @@ class ThAl
 
         if (!isFinite(temp))
         {
-            if((mode != CProgParam_ThAl::mode::FAST   ) &&
-               (mode != CProgParam_ThAl::mode::DEBUG_F) &&
-               (mode != CProgParam_ThAl::mode::STRUCT )     )
+            if((mode != thal_args::mode::FAST   ) &&
+               (mode != thal_args::mode::DEBUG_F) &&
+               (mode != thal_args::mode::STRUCT )     )
             {
                 printf("No predicted secondary structures for given sequences\n");
             }
@@ -1810,8 +1810,8 @@ class ThAl
         N = (N/2) -1;
         double t = ((H) / (S + (N * saltCorrection) + RC)) - ABSOLUTE_ZERO;
 
-        if((mode != CProgParam_ThAl::mode::FAST   ) &&
-           (mode != CProgParam_ThAl::mode::DEBUG_F)   )
+        if((mode != thal_args::mode::FAST   ) &&
+           (mode != thal_args::mode::DEBUG_F)   )
         {
             double G = (H) - (t37 * (S + (N * saltCorrection)));
             S = S + (N * saltCorrection);
@@ -1820,7 +1820,7 @@ class ThAl
             /* printf("Thermodynamical values:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\tN = %d, SaltC=%f, RC=%f\n",
                    len1, (double) S, (double) H, (double) G, (double) t, (int) N, saltCorrection, RC); */
 
-            if (mode != CProgParam_ThAl::mode::STRUCT)
+            if (mode != thal_args::mode::STRUCT)
             {
                 printf("Calculated thermodynamical parameters for dimer:\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
                                                                 (double) S, (double) H, (double) G, (double) t);
@@ -1832,7 +1832,7 @@ class ThAl
         } else
         {
             o->temp = (double) t;
-            return NULL;
+            return {};
         }
 
 
@@ -1905,7 +1905,7 @@ class ThAl
                                                              duplex[3] += '-';  }
         }
 
-        if ((mode == CProgParam_ThAl::mode::GENERAL) || (mode == CProgParam_ThAl::mode::DEBUG))
+        if ((mode == thal_args::mode::GENERAL) || (mode == thal_args::mode::DEBUG))
         {
             printf("SEQ\t");             printf("%s\n", duplex[0].c_str());
             printf("SEQ\t");             printf("%s\n", duplex[1].c_str());
@@ -1913,7 +1913,7 @@ class ThAl
             printf("STR\t");             printf("%s\n", duplex[3].c_str());
         }
 
-        if (mode == CProgParam_ThAl::mode::STRUCT)
+        if (mode == thal_args::mode::STRUCT)
         {
             std::string ret_str[3];                                //  not just max(len1, len2)  ???
             for (auto & rs: ret_str) rs.reserve(len1 + len2 + 10); // more than duplex , ret_str[3] = NULL;     ?????????????
@@ -1980,7 +1980,7 @@ class ThAl
                 }
 
             ret = ret_para + ret_str[0] + " 3\'\\n" + ret_str[1] + "\\n" + ret_str[2] + " 5\'\\n";
-        }  // if (mode == CProgParam_ThAl::mode::STRUCT)
+        }  // if (mode == thal_args::mode::STRUCT)
         return ret;
     }
 
@@ -1991,11 +1991,10 @@ SEQ	//////----\\\\\\
 STR	CCGCAGTAAGCTGCGG
 
 */
-
     std::string drawHairpin(std::vector<int>& bp,
                             double mh,
                             double ms,
-                            const CProgParam_ThAl::mode mode,
+                            const thal_args::mode mode,
                             double temp,
                             thal_results *o)
     {
@@ -2011,9 +2010,9 @@ STR	CCGCAGTAAGCTGCGG
                                                                 /* Plain text */
         double mg, t;
         if (!isFinite(ms) || !isFinite(mh)) {
-            if((mode != CProgParam_ThAl::mode::FAST) && (mode != CProgParam_ThAl::mode::DEBUG_F))
+            if((mode != thal_args::mode::FAST) && (mode != thal_args::mode::DEBUG_F))
             {
-                if (mode != CProgParam_ThAl::mode::STRUCT)
+                if (mode != thal_args::mode::STRUCT)
                 {
                     printf("0\tdS = %g\tdH = %g\tinf\tinf\n", (double) ms,(double) mh);
 #ifdef DEBUG
@@ -2028,22 +2027,22 @@ STR	CCGCAGTAAGCTGCGG
         } else
         {
             int  N = 0;
-            if((mode != CProgParam_ThAl::mode::FAST   ) &&
-               (mode != CProgParam_ThAl::mode::DEBUG_F)     )
+            if((mode != thal_args::mode::FAST   ) &&
+               (mode != thal_args::mode::DEBUG_F)     )
                      for (i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
             else
                      for (i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
 
             t = (mh / (ms + (((N/2)-1) * saltCorrection))) - ABSOLUTE_ZERO;
 
-            if((mode != CProgParam_ThAl::mode::FAST) &&
-               (mode != CProgParam_ThAl::mode::DEBUG_F))
+            if((mode != thal_args::mode::FAST) &&
+               (mode != thal_args::mode::DEBUG_F))
             {
                 mg = mh - (temp * (ms + (((N/2)-1) * saltCorrection)));
                 ms = ms + (((N/2)-1) * saltCorrection);
                 o->temp = (double) t;
 
-                if (mode != CProgParam_ThAl::mode::STRUCT)
+                if (mode != thal_args::mode::STRUCT)
                     printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
                            len1, (double) ms, (double) mh, (double) mg, (double) t);
                 else
@@ -2065,13 +2064,13 @@ STR	CCGCAGTAAGCTGCGG
             if( bp[i-1] > (i-1))         asciiRow[(bp[i-1]-1)] =  '\\';
             else                         asciiRow[(bp[i-1]-1)] =  '/' ;
         }
-        if ((mode == CProgParam_ThAl::mode::GENERAL) ||
-            (mode == CProgParam_ThAl::mode::DEBUG  )   )
+        if ((mode == thal_args::mode::GENERAL) ||
+            (mode == thal_args::mode::DEBUG  )   )
         {
             printf("SEQ\t");        for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
             printf("\nSTR\t%s\n", oligo1);
         }
-        if (mode == CProgParam_ThAl::mode::STRUCT)
+        if (mode == thal_args::mode::STRUCT)
         {
             ret_str = ret_para;
 
@@ -2146,24 +2145,12 @@ public:
    structure for dimer or for monomer */
 void thal( const seq& oligo_f,
            const seq& oligo_r,
-           CProgParam_ThAl *a,
-           const CProgParam_ThAl::mode modem,
-           thal_results *o)
+           const thal_args& a,
+           const thal_args::mode modem,
+           thal_results &o)
 {
-   if (!o) return; /* Leave it to the caller to crash */
-   double* SH;
-   int *bp;
-   double mh, ms;
-   double G1, bestG;
-
-   enthalpyDPT = entropyDPT = NULL;
-   numSeq1     = numSeq2    = {};
-   oligo1      = oligo2     = {};
-
-   o->msg = "";                          // ???
-   o->temp = THAL_ERROR_SCORE;
-   errno = 0;
-
+    o.msg = "";                          // ???
+    o.temp = -_INFINITY;
     int len_f = oligo_f.length() ;
     int len_r = oligo_r.length() ;
 
@@ -2183,10 +2170,10 @@ void thal( const seq& oligo_f,
 
     if (!a) throw std::runtime_error("Null 'in' argument pointer passed to thermodynamic alignment");
 
-    if (  a->type != CProgParam_ThAl::type::Any      // 1
-       && a->type != CProgParam_ThAl::type::end1     // 2
-       && a->type != CProgParam_ThAl::type::end2     // 3
-       && a->type != CProgParam_ThAl::type::Hairpin) // 4
+    if (  a->type != thal_args::type::Any      // 1
+       && a->type != thal_args::type::end1     // 2
+       && a->type != thal_args::type::end2     // 3
+       && a->type != thal_args::type::Hairpin) // 4
           throw std::runtime_error("Illegal task type passed to thermodynamic alignment");
 
    o->align_end_1 = -1;
@@ -2197,15 +2184,22 @@ void thal( const seq& oligo_f,
 
    oligo1 = oligo_f;
    oligo2 = oligo_r;
-   if(a->type!=CProgParam_ThAl::type::end2) oligo1.swap(oligo2);     // 3
+   if(a->type!=thal_args::type::end2) oligo1.swap(oligo2);     // 3
    len1 = oligo1.length();
    len2 = oligo2.length();
    for(int i = 0; i < len1; i++) oligo1[i] = toupper(oligo1[i]);
    for(int i = 0; i < len2; i++) oligo2[i] = toupper(oligo2[i]);
 
+    double* SH;
+    int *bp;
+    double mh, ms;
+    double G1, bestG;
+
+
+
     /*** INIT values for unimolecular and bimolecular structures ***/
 
-   if (a->type==CProgParam_ThAl::type::Hairpin)                         /* unimolecular folding     4 */
+   if (a->type==thal_args::type::Hairpin)                         /* unimolecular folding     4 */
    {
       len3 = len2 -1;
       dplx_init_H = 0.0;                /* initiation enthalpy; for duplex 200, for unimolecular structure 0 */
@@ -2234,7 +2228,7 @@ void thal( const seq& oligo_f,
    numSeq1 = '\4' + nt2code(oligo1) + '\4'    /* mark first and last as N-s */
    numSeq2 = '\4' + nt2code(oligo2) + '\4'    /* mark first and last as N-s */
 
-   if (a->type == CProgParam_ThAl::type::Hairpin)   /* 4 calculate structure of monomer */
+   if (a->type == thal_args::type::Hairpin)   /* 4 calculate structure of monomer */
    {
       enthalpyDPT.clear(); enthalpyDPT.resize( len1 * len2 );   // safe_realloc(ptr, m * n * sizeof(double)
       entropyDPT.clear() ; entropyDPT.resize ( len1 * len2 );
@@ -2252,9 +2246,9 @@ void thal( const seq& oligo_f,
          o->sec_struct=drawHairpin(bp, mh, ms, mode,a->temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
           /* prints ascii output of hairpin structure */
       }
-      else if((mode != CProgParam_ThAl::mode::FAST   ) &&
-              (mode != CProgParam_ThAl::mode::DEBUG_F) &&
-              (mode != CProgParam_ThAl::mode::STRUCT)    )
+      else if((mode != thal_args::mode::FAST   ) &&
+              (mode != thal_args::mode::DEBUG_F) &&
+              (mode != thal_args::mode::STRUCT)    )
       {
          fputs("No secondary structure could be calculated\n",stderr);
       }
@@ -2300,7 +2294,7 @@ void thal( const seq& oligo_f,
             }
          }
       std::vector<int> ps1(len1, 0), ps2(len2, 0);
-      if(a->type == CProgParam_ThAl::type::end1 || a->type == CProgParam_ThAl::type::end2)        {
+      if(a->type == thal_args::type::end1 || a->type == thal_args::type::end2)        {
          /* THAL_END1 */
          bestI = bestJ = 0;
          bestI = len1;
