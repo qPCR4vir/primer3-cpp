@@ -74,11 +74,14 @@ int main(int argc, char** argv)
                                     do not draw structure or print any additional parameters */
    int thal_debug = 0;
    int thal_only = 0;
-   if((mode == THL_DEBUG) || (mode == THL_DEBUG_F)) {
+/*
+   if((mode == THL_DEBUG) || (mode == THL_DEBUG_F))       // ???
+   {
 #undef DEBUG
-   } else {
+   } else
+   {
 #define DEBUG
-   }
+   }*/
 
    usage = "USAGE: %s OPTIONS oligo\n"
      "-mv monovalent_conc  - concentration of monovalent cations in mM, by default 50 mM\n"
@@ -104,16 +107,22 @@ int main(int argc, char** argv)
      "\n"
      "-s2 DNA_oligomer\n"
      "\n";
-   if(argc < 2) {
+
+   if(argc < 2)
+   {
 #ifdef DEBUG
       fprintf(stderr, usage, argv[0]);
 #endif
       return -1;
    }
-   /* BEGIN: READ the INPUT */
-   for(i = 1; i < argc; ++i) {
-      if (!strncmp("-mv", argv[i], 3)) { /* conc of monovalent cations */
-         if(argv[i+1]==NULL) {
+
+                             /* BEGIN: READ the INPUT */
+   for(i = 1; i < argc; ++i)
+   {
+      if (!strncmp("-mv", argv[i], 3))               /* conc of monovalent cations */
+      {
+         if(argv[i+1]==NULL)
+         {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -127,7 +136,10 @@ int main(int argc, char** argv)
             exit(-1);
          }
          i++;
-      } else if (!strncmp("-dv", argv[i], 3)) { /* conc of divalent cations */
+      } else
+
+      if (!strncmp("-dv", argv[i], 3))               /* conc of divalent cations */
+      {
          if(argv[i+1]==NULL) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
@@ -292,14 +304,14 @@ int main(int argc, char** argv)
    }
    /* read default thermodynamic parameters */
    thal_parameters thermodynamic_parameters;
-   thal_set_null_parameters(&thermodynamic_parameters);
+   //thal_set_null_parameters(&thermodynamic_parameters);
 
    if (path != NULL) {
       thal_load_parameters(path, &thermodynamic_parameters, &o);
    } else {
       set_default_thal_parameters(&thermodynamic_parameters);
    }
-   get_thermodynamic_values(&thermodynamic_parameters, &o);
+   //get_thermodynamic_values(&thermodynamic_parameters, &o);
 
    if (tmp_ret) {
      fprintf(stderr, "%s\n", o.msg);
@@ -322,13 +334,10 @@ int main(int argc, char** argv)
    }
 
    /* execute thermodynamical alignemnt */
-   if(a.dimer==0 && oligo1!=NULL){
-      thal(oligo1,oligo1,&a,mode,&o);   
-   } else if(a.dimer==0 && oligo1==NULL && oligo2!=NULL) {
-      thal(oligo2,oligo2,&a,mode,&o);
-   } else {
-      thal(oligo1,oligo2,&a,mode,&o);   
-   }
+     if     (a.dimer==0 && oligo1 !=NULL)                 {      thal(oligo1,oligo1,&a,mode,&o);   }
+     else{if(a.dimer==0 && oligo1 ==NULL && oligo2!=NULL) {      thal(oligo2,oligo2,&a,mode,&o);   }
+          else                                            {      thal(oligo1,oligo2,&a,mode,&o);   }}
+
    /* encountered error during thermodynamical calc */
    if (o.temp == THAL_ERROR_SCORE) {
       tmp_ret = fprintf(stderr, "Error: %s\n", o.msg);

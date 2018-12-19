@@ -35,7 +35,7 @@
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+/*
 #include <limits.h>
 #include <errno.h>
 #include <stdio.h>
@@ -44,7 +44,7 @@
 #include <setjmp.h>
 #include <ctype.h>
 #include <math.h>
-#include <unistd.h>
+#include <unistd.h>  */
 #include <fstream>
 #include <istream>
 #include <sstream>
@@ -53,6 +53,7 @@
 #include <vector>
 #include <string_view>
 #include <stack>
+#include "thal.hpp"
 
 #include "primer3_config/dangle.dh.hpp"
 #include "primer3_config/dangle.ds.hpp"
@@ -76,7 +77,6 @@
 #endif
 /*#define DEBUG*/   // todo ??
 
-#include "thal.hpp"
 
 extern const double _INFINITY;     // todo ??
 
@@ -117,6 +117,7 @@ nt2code(unsigned char c)          ///< converts DNA nt char to unsigned char cod
         case 'C': case '1':       return 1;
         case 'G': case '2':       return 2;
         case 'T': case '3':       return 3;
+        default:                  return 4;
     }
     return 4;
 }
@@ -125,7 +126,14 @@ seq nt2code (const seq& nt)
 {
     seq code;
     code.reserve( nt.length() );
-    for (char n:nt) code+=nt2code(n);
+    for (auto n:nt) code+=nt2code(n);
+    return code;
+}
+seq nt2code (const std::string& nt)
+{
+    seq code;
+    code.reserve( nt.length() );
+    for (auto n:nt) code+=nt2code(n);
     return code;
 }
 
@@ -165,22 +173,22 @@ public:
 
     void set_defaults( )
     {
-        this->dangle_dh         = std::make_unique<std::istream>(dangle_dh_data );
-        this->dangle_ds         = std::make_unique<std::istream>(dangle_ds_data);
-        this->loops_dh          = std::make_unique<std::istream>(loops_dh_data );
-        this->loops_ds          = std::make_unique<std::istream>(loops_ds_data );
-        this->stack_dh          = std::make_unique<std::istream>(stack_dh_data );
-        this->stack_ds          = std::make_unique<std::istream>(stack_ds_data );
-        this->stackmm_dh        = std::make_unique<std::istream>(stackmm_dh_data);
-        this->stackmm_ds        = std::make_unique<std::istream>(stackmm_ds_data);
-        this->tetraloop_dh      = std::make_unique<std::istream>(tetraloop_dh_data );
-        this->tetraloop_ds      = std::make_unique<std::istream>(tetraloop_ds_data );
-        this->triloop_dh        = std::make_unique<std::istream>(triloop_dh_data );
-        this->triloop_ds        = std::make_unique<std::istream>(triloop_ds_data );
-        this->tstack_tm_inf_ds  = std::make_unique<std::istream>(tstack_tm_inf_ds_data );
-        this->tstack_dh         = std::make_unique<std::istream>(tstack_dh_data );
-        this->tstack2_dh        = std::make_unique<std::istream>(tstack2_dh_data );
-        this->tstack2_ds        = std::make_unique<std::istream>(tstack2_ds_data );
+        this->dangle_dh         = std::make_unique<std::istringstream>(dangle_dh_data );
+        this->dangle_ds         = std::make_unique<std::istringstream>(dangle_ds_data);
+        this->loops_dh          = std::make_unique<std::istringstream>(loops_dh_data );
+        this->loops_ds          = std::make_unique<std::istringstream>(loops_ds_data );
+        this->stack_dh          = std::make_unique<std::istringstream>(stack_dh_data );
+        this->stack_ds          = std::make_unique<std::istringstream>(stack_ds_data );
+        this->stackmm_dh        = std::make_unique<std::istringstream>(stackmm_dh_data);
+        this->stackmm_ds        = std::make_unique<std::istringstream>(stackmm_ds_data);
+        this->tetraloop_dh      = std::make_unique<std::istringstream>(tetraloop_dh_data );
+        this->tetraloop_ds      = std::make_unique<std::istringstream>(tetraloop_ds_data );
+        this->triloop_dh        = std::make_unique<std::istringstream>(triloop_dh_data );
+        this->triloop_ds        = std::make_unique<std::istringstream>(triloop_ds_data );
+        this->tstack_tm_inf_ds  = std::make_unique<std::istringstream>(tstack_tm_inf_ds_data );
+        this->tstack_dh         = std::make_unique<std::istringstream>(tstack_dh_data );
+        this->tstack2_dh        = std::make_unique<std::istringstream>(tstack2_dh_data );
+        this->tstack2_ds        = std::make_unique<std::istringstream>(tstack2_ds_data );
     }
 
     void load(const std::filesystem::path& dirname )
@@ -1720,7 +1728,7 @@ class ThAl {
     void tracebacku(std::vector<int>& bp, int maxLoop) ///< traceback for unimolecular hairpins structure
     {
         std::stack<harpin> harpins;                  // struct tracer *top, *stack = NULL;
-        harpins.emplace(len1,0,1);                   // push(&stack,len1, 0, 1);
+        harpins.push(harpin{len1,0,1});                   // push(&stack,len1, 0, 1);
         double SH1[2], SH2[2], EntropyEnthalpy[2];
         while(!harpins.empty()) {
             harpin top = harpins.top();    harpins.pop();
@@ -1737,14 +1745,14 @@ class ThAl {
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT (k + 1, i)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i)))
                         {
-                            harpins.emplace(k + 1, i, 0 );
+                            harpins.push(harpin{k + 1, i, 0 });
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i]) + EntropyDPT (k + 1, i)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i]) + EnthalpyDPT(k + 1, i)))
                         {
-                            harpins.emplace(k + 1, i, 0 );
-                            harpins.emplace(k    , 0, 1 );
+                            harpins.push(harpin{k + 1, i, 0 });
+                            harpins.push(harpin{k    , 0, 1 });
                             break;
                         }
                 }
@@ -1755,14 +1763,14 @@ class ThAl {
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT (k + 2, i)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i)))
                         {
-                            harpins.emplace(k + 2, i, 0 );
+                            harpins.push(harpin{k + 2, i, 0 });
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i]) + Sd5(i, k + 2) + EntropyDPT (k + 2, i)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i]) + Hd5(i, k + 2) + EnthalpyDPT(k + 2, i)))
                         {
-                            harpins.emplace(k + 2, i, 0 );
-                            harpins.emplace(k    , 0, 1 );
+                            harpins.push(harpin{k + 2, i, 0 });
+                            harpins.push(harpin{k    , 0, 1 });
                             break;
                         }
                 }
@@ -1773,14 +1781,14 @@ class ThAl {
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT (k + 1, i - 1)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1)))
                         {
-                            harpins.emplace(k + 1, i - 1, 0 );
+                            harpins.push(harpin{k + 1, i - 1, 0 });
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 1], numSeq1[i - 1]) + Sd3(i - 1, k + 1) + EntropyDPT (k + 1, i - 1)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 1], numSeq1[i - 1]) + Hd3(i - 1, k + 1) + EnthalpyDPT(k + 1, i - 1)))
                         {
-                            harpins.emplace(k + 1, i - 1, 0 ); /* matrix 0  */
-                            harpins.emplace(k    , 0    , 1 ); /* matrix 3 */
+                            harpins.push(harpin{k + 1, i - 1, 0 }); /* matrix 0  */
+                            harpins.push(harpin{k    , 0    , 1 }); /* matrix 3 */
                             break;
                         }
                 }
@@ -1791,14 +1799,14 @@ class ThAl {
                         if (equal(SEND5(i), atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT (k + 2, i - 1)) &&
                             equal(HEND5(i), atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1)))
                         {
-                            harpins.emplace(k + 2, i - 1, 0 );
+                            harpins.push(harpin{k + 2, i - 1, 0} );
                             break;
                         }
                         else if (equal(SEND5(i), SEND5(k) + atPenaltyS(numSeq1[k + 2], numSeq1[i - 1]) + Ststack(i - 1, k + 2) + EntropyDPT (k + 2, i - 1)) &&
                                  equal(HEND5(i), HEND5(k) + atPenaltyH(numSeq1[k + 2], numSeq1[i - 1]) + Htstack(i - 1, k + 2) + EnthalpyDPT(k + 2, i - 1)) )
                         {
-                            harpins.emplace(k + 2, i - 1, 0 );
-                            harpins.emplace(k    , 0    , 1 );
+                            harpins.push(harpin{k + 2, i - 1, 0 });
+                            harpins.push(harpin{k    , 0    , 1 });
                             break;
                         }
                 }
@@ -1818,7 +1826,7 @@ class ThAl {
                 if (equal(EntropyDPT (i, j), Ss(i, j, 2) + EntropyDPT (i + 1, j - 1)) &&
                     equal(EnthalpyDPT(i, j), Hs(i, j, 2) + EnthalpyDPT(i + 1, j - 1)))
                 {
-                    harpins.emplace(i + 1, j - 1, 0 );
+                    harpins.push(harpin{i + 1, j - 1, 0} );
                 }
                 else if (equal(EntropyDPT(i, j), SH1[0]) && equal(EnthalpyDPT(i, j), SH1[1]));     // todo nothing??
                 else if (equal(EntropyDPT(i, j), SH2[0]) && equal(EnthalpyDPT(i, j), SH2[1]))
@@ -1834,7 +1842,7 @@ class ThAl {
                             if (equal(EntropyDPT (i, j), EntropyEnthalpy[0] + EntropyDPT (ii, jj)) &&
                                 equal(EnthalpyDPT(i, j), EntropyEnthalpy[1] + EnthalpyDPT(ii, jj)))
                             {
-                                harpins.emplace(ii, jj, 0 );
+                                harpins.push(harpin{ii, jj, 0 });
                                 ++done;
                                 break;
                             }
@@ -2271,7 +2279,7 @@ public:
     ThAl( const seq& oligo_f,
           const seq& oligo_r,
           const thal_args& a,
-          const thal_args::mode modem,
+          const thal_args::mode mode,
           thal_results &o)
           : tp(*a.tp.m_thal_p), oligo1(oligo_f), oligo2(oligo_r)
     {
@@ -2308,9 +2316,9 @@ public:
         /*** Calc part of the salt correction ***/
         saltCorrection=saltCorrectS(a.mv, a.dv, a.dntp); /* salt correction for entropy, must be multiplied with N, which is
                                               the total number of phosphates in the duplex divided by 2; 8bp dplx N=7 */
-
-        numSeq1 = '\4' + nt2code(oligo1) + '\4'    /* mark first and last as N-s */
-        numSeq2 = '\4' + nt2code(oligo2) + '\4'    /* mark first and last as N-s */
+        auto c = nt2code(' '); // 4
+        numSeq1 = c + nt2code(oligo1) + c ;   /* mark first and last as N-s */
+        numSeq2 = c + nt2code(oligo2) + c ;   /* mark first and last as N-s */
 
         if (a.type == thal_args::type::Hairpin)   /* 4 calculate structure of monomer */
         {
@@ -2327,7 +2335,7 @@ public:
             if(isFinite(mh))                          // ********** RESULTS HERE   !!!!!!!!!!
             {
                 tracebacku(bp, a.maxLoop);    // traceback for hairpins in unimolecular structure. calls  /* traceback for unimolecular structure */
-                o.sec_struct=drawHairpin(bp, mh, ms, mode,a->temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
+                o.sec_struct=drawHairpin(bp, mh, ms, mode,a.temp, o); /* if mode=THL_FAST or THL_DEBUG_F then return after printing basic therm data */
                 /* prints ascii output of hairpin structure */
             }
             else if((mode != thal_args::mode::FAST   ) &&
@@ -2337,7 +2345,7 @@ public:
                 fputs("No secondary structure could be calculated\n",stderr);
             }
 
-            if(o.temp==-_INFINITY && (!strcmp(o.msg, ""))) o.temp=0.0;
+            if(o.temp==-_INFINITY && (o.msg=="")) o.temp=0.0;
             return;
         }
         else          // if(a->type!=4) {                        /* Hybridization of two moleculs */
@@ -2400,7 +2408,7 @@ public:
 
             if(isFinite(EnthalpyDPT(bestI, bestJ)))                         //  RESULTS HERE   !!!!!!!!!!
             {
-                traceback(bestI, bestJ, RC, ps1, ps2, a.maxLoop, o);   /* traceback for dimers */
+                traceback(bestI, bestJ, RC, ps1, ps2, a.maxLoop);   /* traceback for dimers */
                 o.sec_struct=drawDimer(ps1, ps2, SHleft, dH, dS, mode, a.temp, o);
                 o.align_end_1=bestI;
                 o.align_end_2=bestJ;
@@ -2432,15 +2440,15 @@ void thal( const seq& oligo_f,
    /* The following error messages will be seen by end users and will
       not be easy to understand. */
     if ((len_f > THAL_MAX_ALIGN) && (len_r > THAL_MAX_ALIGN))
-      throw std::length_error ("Both sequences longer than " + std::itos( THAL_MAX_ALIGN) +
+      throw std::length_error ("Both sequences longer than " + std::to_string( THAL_MAX_ALIGN) +
                                " for thermodynamic alignment");
 
     if (len_f > THAL_MAX_SEQ )
-        throw std::length_error ("Target sequence (1) length > maximum allowed (" + std::itos( MAX_LEN) +
+        throw std::length_error ("Target sequence (1) length > maximum allowed (" + std::to_string( THAL_MAX_SEQ) +
                                                                  ") in thermodynamic alignment"  );
 
     if (len_r > THAL_MAX_SEQ )
-        throw std::length_error ("Target sequence (2) length > maximum allowed (" + std::itos( MAX_LEN) + ") "
+        throw std::length_error ("Target sequence (2) length > maximum allowed (" + std::to_string( THAL_MAX_SEQ) + ") "
                                  "in thermodynamic alignment"  );
 
     if (  a.type != thal_args::type::Any      // 1
@@ -2455,8 +2463,8 @@ void thal( const seq& oligo_f,
    o.align_end_1 = -1;
    o.align_end_2 = -1;
 
-   if (!oligo_f ) throw std::invalid_argument("Empty first sequence passed to thermodynamic alignment");
-   if (!oligo_r ) throw std::invalid_argument("Empty second sequence passed to thermodynamic alignment");
+   if (oligo_f.empty() ) throw std::invalid_argument("Empty first sequence passed to thermodynamic alignment");
+   if (oligo_r.empty() ) throw std::invalid_argument("Empty second sequence passed to thermodynamic alignment");
 
    ThAl( oligo_f, oligo_r, a, modem, o);
 }
