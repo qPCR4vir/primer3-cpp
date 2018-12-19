@@ -1,4 +1,4 @@
-constexpr char[] triloop_dh_data{R"(
+constexpr char triloop_dh_data[]={R"(
 AGAAT	-1500
 AGCAT	-1500
 AGGAT	-1500

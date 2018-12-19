@@ -1,4 +1,4 @@
-constexpr char[] tstack2_ds_data{R"(
+constexpr char tstack2_ds_data[]={R"(
 inf
 inf
 inf

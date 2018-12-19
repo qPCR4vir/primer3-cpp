@@ -36,15 +36,15 @@
 
 #ifndef _THAL_H
 #define _THAL_H
-
-#include <float.h> /* ! mul ei ole float.h-d includes DBL_MAX */
-#include <math.h>
-#include <limits.h>
 #include <string>
 #include <istream>
 #include <memory>
 
 #include "filesystem.hpp"
+
+#include <float.h> /* ! mul ei ole float.h-d includes DBL_MAX */
+#include <math.h>
+#include <limits.h>
 
 #ifndef THAL_ERROR_SCORE
 # define THAL_ERROR_SCORE -_INFINITY
@@ -171,7 +171,7 @@ using seq = std::basic_string<unsigned char> ;
 void thal( const seq& oligo_f,
            const seq& oligo_r,
            const thal_args &a,
-           thal_args::mode mode
+           thal_args::mode mode,
            thal_results &o);
 
 #endif

@@ -358,8 +358,8 @@ _dpal_generic(const unsigned char *X,
     static int P[DPAL_MAX_ALIGN][DPAL_MAX_ALIGN][3];
 #endif
 
-    register int i, j, k, mg, c;
-    register int gap = in->gap, gapl = in->gapl, max_gap = in->max_gap;
+    int i, j, k, mg, c;
+    int gap = in->gap, gapl = in->gapl, max_gap = in->max_gap;
 
 #ifndef DPAL_FORGET_PATH
     int i0 = -99, j0 = -99;
@@ -586,8 +586,8 @@ _dpal_long_nopath_generic(const unsigned char *X,
     /* The "score matrix" (matrix of best scores). */
     int **S, *SI, **P; 
 
-    register int i, j, k, mg, mgy, c;
-    register int gap = in->gap, gapl = in->gapl, max_gap = in->max_gap;
+    int i, j, k, mg, mgy, c;
+    int gap = in->gap, gapl = in->gapl, max_gap = in->max_gap;
 
 
     int I = -99, J = -99; /* Coordinates of the maximum score. */
@@ -752,11 +752,11 @@ _dpal_long_nopath_maxgap1_local(const unsigned char *X,
     int *P0, *P1, *P2;
     int *S;
 
-    register int i, j;
-    register int gap = in->gap;
-    register int smax;           /* The optimum score. */
-    register int score;          /* Current score. */
-    register int a;
+    int i, j;
+    int gap = in->gap;
+    int smax;           /* The optimum score. */
+    int score;          /* Current score. */
+    int a;
 
 #ifdef DPAL_PRINT_COVERAGE
     fprintf(stderr, "_dpal_long_nopath_maxgap1_local called\n");
@@ -844,11 +844,11 @@ _dpal_long_nopath_maxgap1_global_end(const unsigned char *X,
   int *S0, *S1, *S2, *S; 
   int *P0, *P1, *P2;
 
-  register int i, j, k;
-  register int gap = in->gap;
-  register int smax;           /* The optimum score. */
-  register int score;          /* Current score. */
-  register int a, t;
+  int i, j, k;
+  int gap = in->gap;
+  int smax;           /* The optimum score. */
+  int score;          /* Current score. */
+  int a, t;
 
 #ifdef DPAL_PRINT_COVERAGE
   fprintf(stderr, "_dpal_long_nopath_maxgap1_global_end called\n");
@@ -1113,7 +1113,7 @@ illegal_char(const unsigned char *X,
              const dpal_ssm ssm,
              char *out)
 {
-  register const unsigned char *p;
+  const unsigned char *p;
   for (p = X; *p != '\0' && ssm[*p][*p] != INT_MIN; p++);
   if (*p == '\0')
     return 0;
@@ -1136,11 +1136,11 @@ _dpal_long_nopath_maxgap1_local_end(const unsigned char *X,
   int *P0, *P1, *P2;
   int *S;
 
-  register int i, j;
-  register int gap = in->gap;
-  register int smax;           /* The optimum score. */
-  register int score;          /* Current score. */
-  register int a;
+  int i, j;
+  int gap = in->gap;
+  int smax;           /* The optimum score. */
+  int score;          /* Current score. */
+  int a;
 
 #ifdef DPAL_PRINT_COVERAGE
   fprintf(stderr, "_dpal_long_nopath_maxgap1_local_end called\n");

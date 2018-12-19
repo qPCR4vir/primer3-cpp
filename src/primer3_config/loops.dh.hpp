@@ -1,4 +1,4 @@
-constexpr char[] loops_dh_data{R"(
+constexpr char loops_dh_data[]={R"(
 1	inf	0.0	inf
 2	inf	0.0	inf
 3	0.0	0.0	0.0

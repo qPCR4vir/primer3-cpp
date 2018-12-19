@@ -1,4 +1,5 @@
-constexpr char[] dangle_ds_data{R"(inf
+constexpr char dangle_ds_data[]={R"(
+inf
 inf
 inf
 inf
@@ -125,4 +126,5 @@ inf
 inf
 inf
 inf
-inf"};
+inf
+)" };

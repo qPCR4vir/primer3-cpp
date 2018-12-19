@@ -9,40 +9,35 @@
 #ifndef P3_FILESYSTEM_HPP
 #define P3_FILESYSTEM_HPP
 
-#if defined(defined(P3_USING_STD_FILESYSTEM) || defined(P3_USING_BOOST_FILESYSTEM)
-#undef P3_USING_STD_FILESYSTEM
-#undef P3_USING_BOOST_FILESYSTEM
+#if (defined(P3_USING_STD_FILESYSTEM) || defined(P3_USING_BOOST_FILESYSTEM))
+#   undef P3_USING_STD_FILESYSTEM
+#   undef P3_USING_BOOST_FILESYSTEM
 #endif
 
-#define P3_USING_STD_FILESYSTEM   0
-#define P3_USING_BOOST_FILESYSTEM 0
+#if (defined(BOOST_FILESYSTEM_FORCE) ||  ( defined(BOOST_FILESYSTEM_AVAILABLE) &&( defined(STD_FILESYSTEM_NOT_SUPPORTED) && !defined(STD_FILESYSTEM_FORCE) ) ))
 
-#if (defined(BOOST_FILESYSTEM_AVAILABLE) && ( defined(BOOST_FILESYSTEM_FORCE) || ( defined(STD_FILESYSTEM_NOT_SUPPORTED) && !defined(STD_FILESYSTEM_FORCE) ) ))
-
-#undef  P3_USING_BOOST_FILESYSTEM
 #define P3_USING_BOOST_FILESYSTEM 1
 #   include <chrono>
 #   include <boost/filesystem.hpp>
 
 // add boost::filesystem into std::filesystem
 namespace std {
+	namespace filesystem {
+		enum class file_type {
+			none        = boost::filesystem::file_type::status_unknown,
+			not_found   = boost::filesystem::file_type::file_not_found,
+			regular     = boost::filesystem::file_type::regular_file,
+			directory   = boost::filesystem::file_type::directory_file,
+			symlink     = boost::filesystem::file_type::symlink_file,
+			block       = boost::filesystem::file_type::block_file,
+			character   = boost::filesystem::file_type::character_file,
+			fifo        = boost::filesystem::file_type::fifo_file,
+			socket      = boost::filesystem::file_type::socket_file,
+			unknown     = boost::filesystem::file_type::type_unknown,
+		};
+		using namespace boost::filesystem;
+		using file_time_type = std::chrono::time_point<std::chrono::system_clock>;
 
-		namespace filesystem {
-			using namespace boost::filesystem;
-			using file_time_type = std::chrono::time_point<std::chrono::system_clock>;
-
-			enum class file_type {
-				none        = boost::filesystem::file_type::status_unknown,
-				not_found   = boost::filesystem::file_type::file_not_found,
-				regular     = boost::filesystem::file_type::regular_file,
-				directory   = boost::filesystem::file_type::directory_file,
-				symlink     = boost::filesystem::file_type::symlink_file,
-				block       = boost::filesystem::file_type::block_file,
-				character   = boost::filesystem::file_type::character_file,
-				fifo        = boost::filesystem::file_type::fifo_file,
-				socket      = boost::filesystem::file_type::socket_file,
-				unknown     = boost::filesystem::file_type::type_unknown,
-			};
 // Boost dont include generic_u8string
 // http://www.boost.org/doc/libs/1_66_0/boost/filesystem/path.hpp
 //
@@ -68,32 +63,13 @@ namespace std {
 			return directory_iterator();
 		}
 #endif
-
-		} // filesystem
+	} // filesystem
 } // std
 
 #else
 #   undef P3_USING_STD_FILESYSTEM
 #   define P3_USING_STD_FILESYSTEM 1
-#	if ((defined(_MSC_VER) && (_MSC_VER >= 1912) && defined(_MSVC_LANG) && _MSVC_LANG >= 201703)) ||				\
-		((__cplusplus >= 201703L) && \
-			(defined(__clang__) && (__clang_major__ >= 7) ||		\
-			(!defined(__clang__) && defined(__GNUC__) && (__GNUC__ >= 8))) )
-#   	include <filesystem>
-#	else
-#   	include <experimental/filesystem>
-		namespace std{
-			namespace filesystem{
-				using namespace std::experimental::filesystem;
-			}
-		}
-#	endif
+//#	include <filesystem>
 #endif
 
-
-#ifndef __cpp_lib_experimental_filesystem
-#   define __cpp_lib_experimental_filesystem 201406
 #endif
-
-
-#endif	//NANA_FILESYSTEM_HPP

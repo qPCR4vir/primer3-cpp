@@ -1,4 +1,4 @@
-constexpr char[] tetraloop_ds_data{R"(
+constexpr char tetraloop_ds_data[]={R"(
 AAAAAT	-650
 AAAACT	1610
 AAACAT	1610
