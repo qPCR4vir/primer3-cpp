@@ -1967,7 +1967,7 @@ class ThAl {
                                                                 (double) S, (double) H, (double) G, (double) t);
             } else
             {
-                sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
+                sprintf(ret_para, "Tm: %.1f&deg;C  dG: %.0f cal/mol  dH: %.0f cal/mol  dS: %.0f cal/mol*K\\n",
                           (double) t, (double) G, (double) H, (double) S);
             }
         } else
@@ -2187,7 +2187,7 @@ STR	CCGCAGTAAGCTGCGG
                     printf("Calculated thermodynamical parameters for dimer:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\n",
                            len1, (double) ms, (double) mh, (double) mg, (double) t);
                 else
-                    sprintf(ret_para, "t: %.1f  dG: %.0f  dH: %.0f  dS: %.0f\\n",
+                    sprintf(ret_para, "Tm: %.1f&deg;C  dG: %.0f cal/mol  dH: %.0f cal/mol  dS: %.0f cal/mol*K\\n",
                             (double) t, (double) mg, (double) mh, (double) ms);
             }
             else
