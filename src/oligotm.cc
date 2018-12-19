@@ -308,8 +308,8 @@ oligotm(const  char *s,
      tm_method_type  tm_method,
      salt_correction_type salt_corrections)
 {
-   register int dh = 0, ds = 0;
-  register char c;
+  int dh = 0, ds = 0;
+  char c;
   double delta_H, delta_S;
   double Tm; /* Melting temperature */
   double correction;
@@ -522,8 +522,8 @@ double
 oligodg(const char *s,      /* The sequence. */
     int tm_method) 
 {
-   register int dg = 0;
-   register char c;
+   int dg = 0;
+   char c;
 
   if (tm_method != breslauer_auto
       && tm_method != santalucia_auto)
@@ -661,8 +661,8 @@ long_seq_tm(const char *s,
 
  /* Return 1 if string is symmetrical, 0 otherwise. */ 
 int symmetry(const char* seq) {
-   register char s;
-   register char e;
+   char s;
+   char e;
    const char *seq_end=seq;
    int i = 0;
    int seq_len=strlen(seq);

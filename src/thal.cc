@@ -91,16 +91,6 @@ extern const double _INFINITY;     // todo ??
 
 #define isPositive(x) ((x) > 0 ? (1) : (0))
 
-/*** BEGIN CONSTANTS ***/
-# ifdef INTEGER
-const double _INFINITY = 999999.0;
-# else
-#   ifdef INFINITY
-const double _INFINITY = INFINITY;
-#   else
-const double _INFINITY = 1.0 / 0.0;
-#   endif
-# endif
 
 /* part of calculating salt correction for Tm by SantaLucia et al */
 static double
@@ -120,7 +110,7 @@ static const int BPI[5][5] =  {
         {0, 0, 0, 0, 0}};
 
 static unsigned char
-nt2code(char c)          ///< converts DNA nt char to unsigned char code; 0-A, 1-C, 2-G, 3-T, 4-whatever
+nt2code(unsigned char c)          ///< converts DNA nt char to unsigned char code; 0-A, 1-C, 2-G, 3-T, 4-whatever
 {
     switch (c) {
         case 'A': case '0':       return 0;
@@ -131,7 +121,7 @@ nt2code(char c)          ///< converts DNA nt char to unsigned char code; 0-A, 1
     return 4;
 }
 
-seq nt2code (const std::string& nt)
+seq nt2code (const seq& nt)
 {
     seq code;
     code.reserve( nt.length() );
@@ -1927,10 +1917,8 @@ class ThAl {
                           double t37,
                           thal_results &o)
     {
-        int ret_pr_once;
         std::string ret;
         char ret_para[400];                // ??
-        int k, numSS1, numSS2;
 
         if (!isFinite(temp))
         {
@@ -1956,7 +1944,7 @@ class ThAl {
         {
             double G = (H) - (t37 * (S + (N * saltCorrection)));
             S = S + (N * saltCorrection);
-            o->temp = (double) t;
+            o.temp = (double) t;
             /* maybe user does not need as precise as that */
             /* printf("Thermodynamical values:\t%d\tdS = %g\tdH = %g\tdG = %g\tt = %g\tN = %d, SaltC=%f, RC=%f\n",
                    len1, (double) S, (double) H, (double) G, (double) t, (int) N, saltCorrection, RC); */
@@ -1972,7 +1960,7 @@ class ThAl {
             }
         } else
         {
-            o->temp = (double) t;
+            o.temp = (double) t;
             return {};
         }
 
@@ -2039,10 +2027,10 @@ class ThAl {
                 ++j;
             }
             if      (numSS1 < numSS2)
-                for (k = 0; k < numSS2 - numSS1; ++k)     {  duplex[0] += '-';
+                for (int k = 0; k < numSS2 - numSS1; ++k)     {  duplex[0] += '-';
                                                              duplex[1] += ' ';  }
             else if (numSS1 > numSS2)
-                for (k = 0; k < numSS1 - numSS2; ++k)     {  duplex[2] += ' ';
+                for (int k = 0; k < numSS1 - numSS2; ++k)     {  duplex[2] += ' ';
                                                              duplex[3] += '-';  }
         }
 
@@ -2098,7 +2086,7 @@ class ThAl {
             if (duplex[3].length() > duplex[2].length() )          // expected to be equal ? just in case ??!
                 ret_str[2].resize(duplex[3].length()+3, ' ');      // in original - posible junk here ??
 
-            int ret_nr = 3 ;
+            ret_nr = 3 ;
             for ( char c: duplex[3])    // if the nt is in the duplex[3] write it (rescue nt from duplex[3] into ret_str[2])
             {
                 if (c == 'A' || c == 'T' || c == 'C' || c == 'G' || c == '-')      ret_str[3][ret_nr] = c;
@@ -2140,6 +2128,7 @@ STR	CCGCAGTAAGCTGCGG
                             thal_results& o)
     {
         int  ret_space = 0;
+        char ret_para[400];                // ??
         std::string ret_str;
         int ret_last_l,    ret_first_r,
             ret_center,    ret_left_end,    ret_right_start,
@@ -2170,9 +2159,9 @@ STR	CCGCAGTAAGCTGCGG
             int  N = 0;
             if((mode != thal_args::mode::FAST   ) &&
                (mode != thal_args::mode::DEBUG_F)     )
-                     for (i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
+                     for (int i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
             else
-                     for (i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
+                     for (int i = 1; i < len1; ++i)  if(bp[i-1] > 0) N++;      // both branch equal ???
 
             t = (mh / (ms + (((N/2)-1) * saltCorrection))) - ABSOLUTE_ZERO;
 
@@ -2198,7 +2187,7 @@ STR	CCGCAGTAAGCTGCGG
         }
                                                         /* plain-text output */
         std::string asciiRow (len1, '0');
-        for(i = 1; i < len1+1; ++i)
+        for(int i = 1; i < len1+1; ++i)
         {
             if( bp[i-1] == 0)            asciiRow[(i-1)]       =  '-' ;
             else
@@ -2208,7 +2197,7 @@ STR	CCGCAGTAAGCTGCGG
         if ((mode == thal_args::mode::GENERAL) ||
             (mode == thal_args::mode::DEBUG  )   )
         {
-            printf("SEQ\t");        for(i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
+            printf("SEQ\t");        for(int i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
             printf("\nSTR\t%s\n", oligo1);
         }
         if (mode == thal_args::mode::STRUCT)
@@ -2219,7 +2208,7 @@ STR	CCGCAGTAAGCTGCGG
             ret_first_r     = -1  ;
             ret_center_char = '|' ;
 
-            for(i = 0; i < len1; ++i)
+            for(int i = 0; i < len1; ++i)
             {
                 if ( asciiRow[i] == '/')          ret_last_l  = i;
                 if ((ret_first_r == -1 ) &&
@@ -2247,12 +2236,12 @@ STR	CCGCAGTAAGCTGCGG
             if (ret_left_len > ret_right_len)       ret_add_sp_r = ret_left_len  - ret_right_len + 1;
             if (ret_right_len > ret_left_len)       ret_add_sp_l = ret_right_len - ret_left_len;
 
-            for (i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ; // save_append_char(&ret_str, &ret_space, o, ' ');
+            for (int i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ; // save_append_char(&ret_str, &ret_space, o, ' ');
             ret_str += "5' " ;                                     // save_append_string(&ret_str, &ret_space, o, "5' ");
-            for (i = 0 ; i < ret_left_len ; i++)  ret_str += (char) oligo1[i] ;
+            for (int i = 0 ; i < ret_left_len ; i++)  ret_str += (char) oligo1[i] ;
             ret_str += "U+2510\\n   " ;
-            for (i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ;
-            for (i = 0 ; i < ret_left_len ; i++)
+            for (int i = 0 ; i < ret_add_sp_l ; i++)  ret_str += ' ' ;
+            for (int i = 0 ; i < ret_left_len ; i++)
             {
                 if (asciiRow[i] == '/')             ret_str += '|' ;
                 else                                ret_str += ' ' ;
@@ -2260,9 +2249,9 @@ STR	CCGCAGTAAGCTGCGG
             if (ret_center_char == '|' )          ret_str += "U+2502" ;
             else                                  ret_str += ret_center_char ;
             ret_str += "\\n" ;
-            for (i = 0 ; i < ret_add_sp_r - 1 ; i++)       ret_str += ' ' ;
+            for (int i = 0 ; i < ret_add_sp_r - 1 ; i++)       ret_str += ' ' ;
             ret_str += "3' " ;
-            for (i = len1 ; i > ret_right_start - 1; i--)  ret_str += (char) oligo1[i] ;
+            for (int i = len1 ; i > ret_right_start - 1; i--)  ret_str += (char) oligo1[i] ;
             ret_str += "U+2518\\n" ;
 /*
      save_append_string(&ret_str, &ret_space, o, "SEQ ");
@@ -2309,11 +2298,11 @@ public:
             dplx_init_S = -5.7;
             if(symmetry_thermo(oligo1) && symmetry_thermo(oligo2))
             {
-                RC = R  * log(a->dna_conc/1000000000.0);      // both symmetric
+                RC = R  * log(a.dna_conc/1000000000.0);      // both symmetric
             }
             else
             {
-                RC = R  * log(a->dna_conc/4000000000.0);
+                RC = R  * log(a.dna_conc/4000000000.0);
             }
         }
         /*** Calc part of the salt correction ***/
@@ -2433,10 +2422,10 @@ void thal( const seq& oligo_f,
            const seq& oligo_r,
            const thal_args& a,
            const thal_args::mode modem,
-           thal_results &o)
+           thal_results &o) try
 {
     o.msg = "";                          // ???
-    o.temp = -_INFINITY;
+    o.temp = THAL_ERROR_SCORE;
     int len_f = oligo_f.length() ;
     int len_r = oligo_r.length() ;
 
@@ -2470,6 +2459,16 @@ void thal( const seq& oligo_f,
    if (!oligo_r ) throw std::invalid_argument("Empty second sequence passed to thermodynamic alignment");
 
    ThAl( oligo_f, oligo_r, a, modem, o);
+}
+catch (std::exception &e)
+{
+    o.msg += e.what();                          // ???
+    o.temp = THAL_ERROR_SCORE;
+}
+catch (...)
+{
+    o.msg = "";                          // ???
+    o.temp = THAL_ERROR_SCORE;
 }
 /*** END thal() ***/
 

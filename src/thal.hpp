@@ -46,6 +46,17 @@
 #include <math.h>
 #include <limits.h>
 
+/*** BEGIN CONSTANTS ***/
+# ifdef INTEGER
+const double _INFINITY = 999999.0;
+# else
+#   ifdef INFINITY
+const double _INFINITY = INFINITY;
+#   else
+const double _INFINITY = 1.0 / 0.0;
+#   endif
+# endif
+
 #ifndef THAL_ERROR_SCORE
 # define THAL_ERROR_SCORE -_INFINITY
 #endif
@@ -99,9 +110,10 @@ struct thal_parameters
 /// Structure for passing arguments to THermodynamic ALignment calculation
 class thal_args
 {
-   const thal_parameters& tp;
+
  public:
-   enum class type {Any =1, end1, end2, Hairpin };
+    const thal_parameters& tp;
+    enum class type {Any =1, end1, end2, Hairpin };
 
    type         type = type::Any;  ///< 1 = Any, (by default)
    int          maxLoop{MAX_LOOP}; ///< maximum size of loop to consider; longer than 30 bp are not allowed

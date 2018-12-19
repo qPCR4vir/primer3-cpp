@@ -985,7 +985,7 @@ create_thal_arg_holder (const args_for_one_oligo_or_primer *po_args)
    
    h->any = (thal_args *) pr_safe_malloc(sizeof(*h->any));
    set_thal_default_args(h->any);
-   h->any->type = thal_any;
+   h->any->type = thal_args::type::Any;
    h->any->mv = po_args->salt_conc;
    h->any->dv = po_args->divalent_conc;
    h->any->dntp = po_args->dntp_conc;
@@ -993,7 +993,7 @@ create_thal_arg_holder (const args_for_one_oligo_or_primer *po_args)
    
    h->end1 = (thal_args *) pr_safe_malloc(sizeof(*h->end1));
    set_thal_default_args(h->end1);
-   h->end1->type = thal_end1;
+   h->end1->type = thal_args::type::end1;
    h->end1->mv = po_args->salt_conc;
    h->end1->dv = po_args->divalent_conc;
    h->end1->dntp = po_args->dntp_conc;
@@ -1001,7 +1001,7 @@ create_thal_arg_holder (const args_for_one_oligo_or_primer *po_args)
    
    h->end2 = (thal_args *) pr_safe_malloc(sizeof(*h->end2));
    set_thal_default_args(h->end2);
-   h->end2->type = thal_end2;
+   h->end2->type = thal_args::type::end2;
    h->end2->mv = po_args->salt_conc;
    h->end2->dv = po_args->divalent_conc;
    h->end2->dntp = po_args->dntp_conc;
@@ -1009,7 +1009,7 @@ create_thal_arg_holder (const args_for_one_oligo_or_primer *po_args)
    
    h->hairpin_th  = (thal_args *) pr_safe_malloc(sizeof(*h->hairpin_th));
    set_thal_default_args(h->hairpin_th); 
-   h->hairpin_th->type = thal_hairpin;
+   h->hairpin_th->type = thal_args::type::Hairpin;
    h->hairpin_th->mv = po_args->salt_conc;
    h->hairpin_th->dv = po_args->divalent_conc;
    h->hairpin_th->dntp = po_args->dntp_conc;
@@ -4568,7 +4568,7 @@ align_thermod(const char *s1,
 {  
    int thal_trace=0;
    thal_results r;
-   thal((const unsigned char *) s1, (const unsigned char *) s2, a, THL_FAST, &r);
+   thal((const unsigned char *) s1, (const unsigned char *) s2, *a, thal_args::mode::FAST, r);
    if (thal_trace) {
      fprintf(stdout, 
              "thal, thal_args, type=%d maxLoop=%d mv=%f dv=%f "
