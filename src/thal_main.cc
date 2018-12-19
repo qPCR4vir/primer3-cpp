@@ -64,13 +64,16 @@ char *path = NULL; /* path to the parameter files */
 
 /* Beginning of main */
 int main(int argc, char** argv) 
-{   
-   const char* usage;
-   int tmp_ret = 0;
-   thal_args a;
-   thal_results o;
-   set_thal_default_args(&a);
-   thal_mode mode = THL_GENERAL; /* by default print only melting temperature, 
+{
+    thal_parameters thermodynamic_parameters;
+    thal_args       a(thermodynamic_parameters);
+    thal_results o;
+
+    const char* usage;
+    int tmp_ret = 0;
+    /* read default thermodynamic parameters */
+   //set_thal_default_args(&a);
+    auto mode = thal_args::mode::GENERAL; /* by default print only melting temperature,
                                     do not draw structure or print any additional parameters */
    int thal_debug = 0;
    int thal_only = 0;
@@ -117,11 +120,11 @@ int main(int argc, char** argv)
    }
 
                              /* BEGIN: READ the INPUT */
-   for(i = 1; i < argc; ++i)
+   for(int i = 1; i < argc; ++i)
    {
       if (!strncmp("-mv", argv[i], 3))               /* conc of monovalent cations */
       {
-         if(argv[i+1]==NULL)
+         if(! argv[i+1] )
          {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
@@ -140,7 +143,7 @@ int main(int argc, char** argv)
 
       if (!strncmp("-dv", argv[i], 3))               /* conc of divalent cations */
       {
-         if(argv[i+1]==NULL) {
+         if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -155,7 +158,7 @@ int main(int argc, char** argv)
          }
          i++;
       } else if (!strcmp("-path", argv[i])) {
-        if(argv[i+1]==NULL) {
+          if(!argv[i+1]){
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -164,7 +167,7 @@ int main(int argc, char** argv)
          path = (char*)argv[i+1];
          i++;
       } else if (!strncmp("-s1", argv[i], 3)) { /* first sequence in 5'->3' direction */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -173,7 +176,7 @@ int main(int argc, char** argv)
          oligo1 = (const unsigned char*)argv[i+1];
          i++;         
       } else if (!strncmp("-s2", argv[i], 3)) { /* second sequence in 5'->3' direction */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -183,7 +186,7 @@ int main(int argc, char** argv)
          i++;
       } else if (!strncmp("-a", argv[i], 2)) {          /* annealing type END1, END2, ANY, considered only when duplexis; 
                                                   by default ANY  */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -206,7 +209,7 @@ int main(int argc, char** argv)
          }
          i++;
       } else if (!strncmp("-d", argv[i], 2)) { /* dna conc */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]){
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -223,7 +226,7 @@ int main(int argc, char** argv)
       } else if (!strncmp("-r", argv[i], 2)) { /* only temp is calculated */
          thal_only = 1;
       } else if (!strncmp("-t", argv[i], 2)) { /* temperature at which sec str are calculated */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -238,7 +241,7 @@ int main(int argc, char** argv)
          }
          i++;
       } else if (!strncmp("-n", argv[i], 2)) { /* concentration of dNTPs */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -254,7 +257,7 @@ int main(int argc, char** argv)
          i++;
       } else if (!strncmp("-maxloop", argv[i], 8)) { /* maximum size of loop calculated; 
                                                       this value can not be larger than 30 */
-         if(argv[i+1]==NULL) {
+          if(!argv[i+1]) {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -292,21 +295,19 @@ int main(int argc, char** argv)
    /* END reading INPUT */
    
    /* check the input correctness */
-   if(a.dimer!=0 && (oligo2==NULL || oligo1==NULL)) { /* if user wants to calculate structure 
+   if(a.dimer!=0 && (!oligo2 || !oligo1)) { /* if user wants to calculate structure
                                                        of dimer then two sequences must be defined*/
       fprintf(stderr, usage, argv[0]);
       exit(-1);
    }
-   if(a.dimer==0 && (oligo2==NULL && oligo1==NULL)) { /* if user wants to calculate structure
-                                                       of monomer then only one sequence must be defined */
+   if(a.dimer==0 && (!oligo2 && !oligo1)) { /* if user wants to calculate structure
+                                             of monomer then only one sequence must be defined */
       fprintf(stderr, usage, argv[0]);
       exit(-1);
    }
-   /* read default thermodynamic parameters */
-   thal_parameters thermodynamic_parameters;
    //thal_set_null_parameters(&thermodynamic_parameters);
 
-   if (path != NULL) {
+   if (path) {
       thal_load_parameters(path, &thermodynamic_parameters, &o);
    } else {
       set_default_thal_parameters(&thermodynamic_parameters);
@@ -319,34 +320,29 @@ int main(int argc, char** argv)
    }
 
    /* Set the correct mode */
-   if (thal_only) {
-     if (thal_debug) {
-       mode = THL_DEBUG_F;
-     } else {
-       mode = THL_FAST;
-     }
-   } else {
-     if (thal_debug) {
-       mode = THL_DEBUG;
-     } else {
-       mode = THL_GENERAL;
-     }
+   if (thal_only)
+   {
+      if (thal_debug) {   mode = THL_DEBUG_F;   }
+      else            {  mode = THL_FAST;  }
+   }else
+   {
+     if (thal_debug) {   mode = THL_DEBUG;  }
+     else            {   mode = THL_GENERAL;  }
    }
 
    /* execute thermodynamical alignemnt */
-     if     (a.dimer==0 && oligo1 !=NULL)                 {      thal(oligo1,oligo1,&a,mode,&o);   }
-     else{if(a.dimer==0 && oligo1 ==NULL && oligo2!=NULL) {      thal(oligo2,oligo2,&a,mode,&o);   }
-          else                                            {      thal(oligo1,oligo2,&a,mode,&o);   }}
+     if     (a.dimer==0 && oligo1  )             {      thal(oligo1,oligo1,a,mode,o);   }
+     else{if(a.dimer==0 && !oligo1   && oligo2 ) {      thal(oligo2,oligo2,a,mode,o);   }
+          else                                   {      thal(oligo1,oligo2,a,mode,o);   }}
 
    /* encountered error during thermodynamical calc */
    if (o.temp == THAL_ERROR_SCORE) {
-      tmp_ret = fprintf(stderr, "Error: %s\n", o.msg);
+      tmp_ret = fprintf(stderr, "Error: %s\n", o.msg.c_str());
       exit(-1);
    }
    if((mode == THL_FAST) || (mode == THL_DEBUG_F))
      printf("%f\n",o.temp);
    /* cleanup */
-   destroy_thal_structures();
-   thal_free_parameters(&thermodynamic_parameters);
+
    return EXIT_SUCCESS;
 }

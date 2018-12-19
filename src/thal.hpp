@@ -94,7 +94,7 @@ constexpr double TEMP_KELVIN = 310.15;
 class thal_parameters
  {
 public:
-    thal_parameters(); ///< calls set_defaults( );
+    thal_parameters();                                                 ///< calls set_defaults( );
     explicit thal_parameters(const std::filesystem::path& dirname );  ///< calls load( );
     ~thal_parameters();
 

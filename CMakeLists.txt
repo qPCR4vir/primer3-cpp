@@ -45,7 +45,7 @@ add_executable       ( ntdpal  src/ntdpal_main.cc      )
 Set_Properties       ( ntdpal )
 target_link_libraries( ntdpal PUBLIC dpal)
 
-add_executable       ( ntthal src/thal_main.c    )
+add_executable       ( ntthal src/thal_main.cc)
 Set_Properties       ( ntthal )
 target_link_libraries( ntthal PUBLIC thal)
 

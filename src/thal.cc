@@ -530,7 +530,7 @@ private:
 };
 
 thal_parameters::thal_parameters()
-    : m_thal_p  { std::make_unique<thal_parameters::impl>() }
+    //: m_thal_p  { std::make_unique<thal_parameters::impl>() }
 {}
 
 thal_parameters::thal_parameters(const std::filesystem::path& dirname )
@@ -542,14 +542,22 @@ thal_parameters::~thal_parameters()
 
 int thal_parameters::set_defaults( )
 {
-    this->m_thal_p->set_defaults();
+    if(!this->m_thal_p)
+        this->m_thal_p=std::make_unique<thal_parameters::impl>();
+    else
+        this->m_thal_p->set_defaults();
+
     this->m_thal_p->parse_thermodynamic_values();
     return 0;
 }
 
 int thal_parameters::load (const std::filesystem::path& dirname )
 {
-    this->m_thal_p->load(dirname);
+    if(!this->m_thal_p)
+        this->m_thal_p=std::make_unique<thal_parameters::impl>(dirname);
+    else
+        this->m_thal_p->load(dirname);
+
     this->m_thal_p->parse_thermodynamic_values();
     return 0;
 }
