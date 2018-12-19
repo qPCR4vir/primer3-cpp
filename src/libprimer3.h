@@ -44,6 +44,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <limits.h> /* SHRT_MIN, ULONG_MAX */
 #include <float.h> /* DBL_MIN */
+#include "thal.hpp"
+#include "oligotm.hpp"
+#include "masker.h"
+#include "dpal.hpp"
 
 #ifdef __cplusplus
   extern "C" {
@@ -114,11 +118,6 @@ typedef struct pr_append_str {
   char *data;
 } pr_append_str;
 
-#include "oligotm.hpp"
-#include "masker.h"
-#include "thal.hpp"
-#include "thal_parameters.h"
-#include "dpal.hpp"
 
 /* 
  * Arguments to the primer program as a whole.  Values for these arguments are

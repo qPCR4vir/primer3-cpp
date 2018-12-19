@@ -1,4 +1,4 @@
-constexpr char[] tstack_dh_data{R"(
+constexpr char tstack_dh_data[]={R"(
 0
 0
 0

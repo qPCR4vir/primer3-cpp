@@ -1,4 +1,4 @@
-constexpr char[] stack_ds_data{R"(
+constexpr char stack_ds_data[]={R"(
 inf
 inf
 inf
@@ -254,4 +254,5 @@ inf
 inf
 inf
 inf
-inf)"};
+inf
+)"};

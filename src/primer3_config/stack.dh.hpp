@@ -1,4 +1,4 @@
-constexpr char[] stack_dh_data{R"(inf
+constexpr char stack_dh_data[]={R"(inf
 inf
 inf
 inf
@@ -253,5 +253,6 @@ inf
 inf
 inf
 inf
-inf)"};
+inf
+)"};
 

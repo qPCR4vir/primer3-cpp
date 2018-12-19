@@ -1,16 +1,16 @@
+#include <string>      // for getline
+#include <fstream>    // for getline
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include "mman.h" //#include <sys/mman.h> from https://code.google.com/archive/p/mman-win32/
 #include <fcntl.h>
 #include <math.h>
 #include <unistd.h>
 #include <errno.h>
+#include "mman.h" //#include <sys/mman.h> from https://code.google.com/archive/p/mman-win32/
 
 #include "libprimer3.h"
-#include <string>      // for getline
-#include <fstream>    // for getline
 //#include "../../../../MinGW/include/c++/8.1.0/istream"
 
 unsigned int glistmaker_code_match = 'G' << 24 | 'T' << 16 | '4' << 8 | 'C';

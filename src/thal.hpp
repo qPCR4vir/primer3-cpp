@@ -36,15 +36,15 @@
 
 #ifndef _THAL_H
 #define _THAL_H
-
-#include <float.h> /* ! mul ei ole float.h-d includes DBL_MAX */
-#include <math.h>
-#include <limits.h>
 #include <string>
 #include <istream>
 #include <memory>
 
 #include "filesystem.hpp"
+
+#include <float.h> /* ! mul ei ole float.h-d includes DBL_MAX */
+#include <math.h>
+#include <limits.h>
 
 #ifndef THAL_ERROR_SCORE
 # define THAL_ERROR_SCORE -_INFINITY
@@ -79,10 +79,9 @@ extern const int MIN_LOOP;
 constexpr int    MAX_LOOP = 30; ///< the maximum size of loop that can be calculated; for larger loops formula must be implemented
 constexpr double TEMP_KELVIN = 310.15;
 
-/// handle the NN parameters for the thermodinamic-alignment
-class thal_parameters
+/// handle the NN parameters for the thermodynamic alignment
+struct thal_parameters
  {
-   public:
     thal_parameters(); ///< calls set_defaults( );
     explicit thal_parameters(const std::filesystem::path& dirname );  ///< calls load( );
     ~thal_parameters();
@@ -93,14 +92,14 @@ class thal_parameters
     /// load and parse parameters from a directory
     int load(const std::filesystem::path& dirname );
 
-   private:
-     class impl;
-     std::unique_ptr<impl> m_thal_p;
+    class impl;
+    std::unique_ptr<impl> m_thal_p;
 } ;
 
 /// Structure for passing arguments to THermodynamic ALignment calculation
-class CProgParam_ThAl
+class thal_args
 {
+   const thal_parameters& tp;
  public:
    enum class type {Any =1, end1, end2, Hairpin };
 
@@ -121,7 +120,7 @@ class CProgParam_ThAl
         STRUCT  = 4  //< = 4 - calculate secondary structures as string
     };
 
-    CProgParam_ThAl () = default ;
+    explicit thal_args (const thal_parameters& tp) : tp(tp){};
 
     void set_defaults      ( )
     {
@@ -148,7 +147,7 @@ class CProgParam_ThAl
     }
 
 
-    ~CProgParam_ThAl() = default;
+    ~thal_args() = default;
     // int  thal_free_parameters(thal_parameters *a);
 } ;
 
@@ -171,7 +170,8 @@ using seq = std::basic_string<unsigned char> ;
 ///    to check errno.
 void thal( const seq& oligo_f,
            const seq& oligo_r,
-           const CProgParam_ThAl &a,
-           CProgParam_ThAl::mode mode);
+           const thal_args &a,
+           thal_args::mode mode,
+           thal_results &o);
 
 #endif

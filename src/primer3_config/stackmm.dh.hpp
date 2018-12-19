@@ -1,4 +1,4 @@
-constexpr char[] stackmm_dh_data{R"(
+constexpr char stackmm_dh_data[]={R"(
 inf
 inf
 inf

@@ -1,4 +1,4 @@
-constexpr char[] dangle_dh_data{R"(
+constexpr char dangle_dh_data[]={R"(
 0
 0
 0
@@ -126,4 +126,5 @@ constexpr char[] dangle_dh_data{R"(
 0
 0
 0
-0)"};
+0
+)"};

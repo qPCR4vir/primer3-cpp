@@ -6,9 +6,9 @@ project(primer3  VERSION      2.05.00
         LANGUAGES CXX         )
 
 function(Set_Properties targ)
-    set_property( TARGET ${targ} PROPERTY CXX_STANDARD 14 )
+    set_property( TARGET ${targ} PROPERTY CXX_STANDARD 17 )
 	target_include_directories(${targ} PUBLIC src)
-    target_link_libraries(${targ} PUBLIC "-std=c++14 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
+    target_link_libraries(${targ} PUBLIC "-std=c++17 -Wall -static-libgcc -static-libstdc++  -pthread -lm" )
     install(TARGETS ${test} RUNTIME DESTINATION "${primer3_INSTALL_PATH}bin")
     message("... to build:  ${targ}" )
 endfunction(Set_Properties)

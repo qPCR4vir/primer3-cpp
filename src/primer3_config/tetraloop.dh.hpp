@@ -1,4 +1,4 @@
-constexpr char[] tetraloop_dh_data{R"(
+constexpr char tetraloop_dh_data[]={R"(
 AAAAAT	500
 AAAACT	700
 AAACAT	1000
