@@ -192,16 +192,11 @@ int main(int argc, char** argv)
 #endif
             exit(-1);
          }
-         if(strcmp(argv[i+1],"END1")==0) {
-            a.type = thal_end1;
-         } else if(strcmp(argv[i+1],"END2")==0) {
-            a.type = thal_end2;
-         } else if(strcmp(argv[i+1],"HAIRPIN")==0) {
-            a.type = thal_hairpin;
-            a.dimer = 0;
-         } else if (strcmp(argv[i+1], "ANY")==0) {
-               a.type = thal_any; /* ANY */  
-         } else {
+         if     (strcmp(argv[i+1],"END1"   )==0)    a.type = thal_args::type::end1 ;
+         else if(strcmp(argv[i+1],"END2"   )==0)    a.type = thal_args::type::end2 ;
+         else if(strcmp(argv[i+1],"HAIRPIN")==0)  { a.type = thal_args::type::Hairpin; a.dimer = 0; }
+         else if(strcmp(argv[i+1], "ANY"   )==0)    a.type = thal_args::type::Any;
+         else {
 #ifdef DEBUG
             fprintf(stderr, usage, argv[0]);
 #endif
@@ -307,40 +302,40 @@ int main(int argc, char** argv)
    }
    //thal_set_null_parameters(&thermodynamic_parameters);
 
-   if (path) {
-      thal_load_parameters(path, &thermodynamic_parameters, &o);
-   } else {
-      set_default_thal_parameters(&thermodynamic_parameters);
-   }
+   if (path) thermodynamic_parameters.load(path);
+   else      thermodynamic_parameters.set_defaults();
+
    //get_thermodynamic_values(&thermodynamic_parameters, &o);
 
-   if (tmp_ret) {
-     fprintf(stderr, "%s\n", o.msg);
-     exit(-1);
-   }
+   if (tmp_ret) {      fprintf(stderr, "%s\n", o.msg);      exit(-1);    }
 
    /* Set the correct mode */
-   if (thal_only)
+   if (thal_only)                    //    ?????????????????
    {
-      if (thal_debug) {   mode = THL_DEBUG_F;   }
-      else            {  mode = THL_FAST;  }
+      if (thal_debug) {  mode = thal_args::mode::DEBUG_F;   }
+      else            {  mode = thal_args::mode::FAST;  }
    }else
    {
-     if (thal_debug) {   mode = THL_DEBUG;  }
-     else            {   mode = THL_GENERAL;  }
+     if (thal_debug) {   mode = thal_args::mode::DEBUG_ ;  }
+     else            {   mode = thal_args::mode::GENERAL;  }
    }
 
+
    /* execute thermodynamical alignemnt */
+
      if     (a.dimer==0 && oligo1  )             {      thal(oligo1,oligo1,a,mode,o);   }
      else{if(a.dimer==0 && !oligo1   && oligo2 ) {      thal(oligo2,oligo2,a,mode,o);   }
           else                                   {      thal(oligo1,oligo2,a,mode,o);   }}
 
+
    /* encountered error during thermodynamical calc */
-   if (o.temp == THAL_ERROR_SCORE) {
+   if (o.temp == THAL_ERROR_SCORE)
+   {
       tmp_ret = fprintf(stderr, "Error: %s\n", o.msg.c_str());
       exit(-1);
    }
-   if((mode == THL_FAST) || (mode == THL_DEBUG_F))
+
+   if((mode == thal_args::mode::FAST) || (mode == thal_args::mode::DEBUG_F))
      printf("%f\n",o.temp);
    /* cleanup */
 

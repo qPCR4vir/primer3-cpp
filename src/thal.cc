@@ -2050,7 +2050,7 @@ class ThAl {
                                                              duplex[3] += '-';  }
         }
 
-        if ((mode == thal_args::mode::GENERAL) || (mode == thal_args::mode::DEBUG))
+        if ((mode == thal_args::mode::GENERAL) || (mode == thal_args::mode::DEBUG_))
         {
             printf("SEQ\t");             printf("%s\n", duplex[0].c_str());
             printf("SEQ\t");             printf("%s\n", duplex[1].c_str());
@@ -2211,7 +2211,7 @@ STR	CCGCAGTAAGCTGCGG
             else                         asciiRow[(bp[i-1]-1)] =  '/' ;
         }
         if ((mode == thal_args::mode::GENERAL) ||
-            (mode == thal_args::mode::DEBUG  )   )
+            (mode == thal_args::mode::DEBUG_  )   )
         {
             printf("SEQ\t");        for(int i = 0; i < len1; ++i) printf("%c",asciiRow[i]);   // ??
             printf("\nSTR\t%s\n", oligo1);

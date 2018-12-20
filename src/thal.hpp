@@ -137,7 +137,7 @@ class thal_args
         FAST    = 0, //< = 0 - score only with optimized functions (fast)
         GENERAL = 1, //< = 1 - use general function without debug (slow)
         DEBUG_F = 2, //< = 2 - debug mode with fast, print alignments on STDERR
-        DEBUG   = 3, //< = 3 - debug mode print alignments on STDERR
+        DEBUG_  = 3, //< = 3 - debug mode print alignments on STDERR
         STRUCT  = 4  //< = 4 - calculate secondary structures as string
     };
 
